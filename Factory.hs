@@ -18,6 +18,16 @@ import Data.Proxy
 import System.IO.Unsafe as Unsafe
 
 import CanonicalForm
+import DList as DList
+
+import Numeric.GMP.Types
+import qualified Numeric.GMP.Utils as GMP 
+
+--------------------------------------------------------------------------------
+
+-- | The maximum prime characteristic Factory can handle
+maxCharacteristic :: Int
+maxCharacteristic = 536870909     -- 2^29-3
 
 --------------------------------------------------------------------------------
 
@@ -26,20 +36,50 @@ pk vars k = Unsafe.unsafePerformIO $ do
   terms <- sequence [ varPowCF v k | v <- vars ]
   return $ foldl1' (+) (1 : terms)
 
+pkn :: [Var] -> Int -> CF
+pkn vars k = Unsafe.unsafePerformIO $ do
+  terms <- sequence [ varPowCF v k | v <- vars ]
+  return $ 1 - foldl1' (+) terms
+
 factory_main = do
+  char <- getCharacteristic 
+  putStrLn $ "current characteristic = " ++ show char
+{-
+  setCharacteristic1 19 
+  char <- getCharacteristic 
+  putStrLn $ "current characteristic = " ++ show char
+-}
+
+  cf <- makeIntegerCF 12345
+  print =<< getZZ cf
+
+  cf <- makeIntegerCF 2106444751876036
+  print =<< getZZ cf
+
+  cf <- makeRationalCF (123142414918234249 / 7324433294752894)
+  print =<< getQQ cf
+
   vars <- mapM newVar [1..3]
   let p1 = pk vars 1
       p2 = pk vars 2
       p3 = pk vars 3
       p4 = pk vars 4
   let test1 = p1^4 - 1
-      test2 = p1^4 * p2^4 - 1
+      test2 = p2^2 - 1
+      test3 = substitute (last vars) p3 test2
+      test4 = p1^4 * p2^4 - 1
+      test5 = p1^8 * p2^8 * p3^8 - 1
+      test6 = sum [ (pk vars k)^10 * (pkn vars k)^10 - 1 | k <-[1..10] ]
+      test7 = p1^9 * p2^9 * p3^9 
+      test8 = p1^20
+
   putStrLn "factory test"
 
   putStrLn "\ninput:"
-  printCF test1
+  printCF test8
+
   putStrLn "\nfactors:"
-  facs <- factorize test1
+  facs <- factorize test8
   forM facs $ \(fac,expo) -> do
     putStr $ "expo = " ++ show expo ++ " | " 
     printCF fac
@@ -53,6 +93,12 @@ instance Num CF where
   (*) x y = Unsafe.unsafePerformIO (timesIO x y)
   abs    = error "CF: Num/abs is not implemented"
   signum = error "CF: Num/signum is not implemented"
+
+instance Eq CF where
+  (==) x y = Unsafe.unsafePerformIO (isEqualIO x y)
+
+substitute :: Var -> CF -> (CF -> CF)
+substitute var what cf = Unsafe.unsafePerformIO (substituteIO var what cf)
 
 printCF :: CF -> IO ()
 printCF cf = do
@@ -133,14 +179,17 @@ getZZ cf = isInZZ cf >>= \b -> case b of
   False -> return Nothing
   True  -> isImmediate cf >>= \b -> case b of
     True  -> (Just . fromIntegral) <$> getSmallIntValue cf
-    False -> error "getZZ: bignums are not implemented yet"
+    False -> Just <$> getGmpNumerator cf
+      -- error "getZZ: bignums are not implemented yet"
 
 getQQ :: CF -> IO (Maybe Rational)
 getQQ cf = isInQQ cf >>= \b -> case b of
   False -> return Nothing
   True  -> do
-    Just numer <- (getZZ =<< getNumer cf)
-    Just denom <- (getZZ =<< getDenom cf)
+    -- Just numer <- (getZZ =<< getNumer cf)
+    -- Just denom <- (getZZ =<< getDenom cf)
+    numer <- getGmpNumerator   cf
+    denom <- getGmpDenominator cf
     return $ Just $ (numer % denom)
 
 getGF :: CF -> IO (Maybe Int)
@@ -179,7 +228,30 @@ makeTerm :: [(Level,Expo)] -> BaseValue -> Term
 makeTerm ves cf = Term cf (makeMonom ves)
 
 genericMarshalFromCF :: ([(Level,Expo)] -> BaseValue -> a) -> CF -> IO [a]
-genericMarshalFromCF user = worker [] where
+genericMarshalFromCF user cf = DList.toList <$> (genericMarshalFromCF_dlist user cf)
+
+--------------------------------------------------------------------------------
+
+genericMarshalFromCF_dlist :: ([(Level,Expo)] -> BaseValue -> a) -> CF -> IO (DList a)
+genericMarshalFromCF_dlist user = worker [] where
+  worker expos cf = do
+    getBaseValue cf >>= \mb -> case mb of
+      Just val -> return (DList.singleton $ user expos val)
+      Nothing  -> do
+        level <- getLevel  cf
+        deg   <- getDegree cf
+        stuff <- forM [0..deg] $ \d -> do
+          this <- getCfAtIndex cf d
+          isZero this >>= \b -> if b
+            then return (DList.empty)
+            else if d > 0 
+              then worker ((level,d):expos) this
+              else worker            expos  this
+        return $ DList.concat stuff
+
+{-
+genericMarshalFromCF_list :: ([(Level,Expo)] -> BaseValue -> a) -> CF -> IO [a]
+genericMarshalFromCF_list user = worker [] where
   worker expos cf = do
     getBaseValue cf >>= \mb -> case mb of
       Just val -> return [user expos val]
@@ -193,7 +265,10 @@ genericMarshalFromCF user = worker [] where
             else if d > 0 
               then worker ((level,d):expos) this
               else worker            expos  this
-        return $ concat stuff
+        return $ Data.List.concat stuff
+-}
+
+--------------------------------------------------------------------------------
 
 {-
 --------------------------------------------------------------------------------

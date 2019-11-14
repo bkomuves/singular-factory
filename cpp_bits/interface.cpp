@@ -165,6 +165,7 @@ CF *var_pow_cf(Var *var, int expo)
 }
 
 // -----------------------------------------------------------------------------
+// some simple predicates
 
 extern "C" 
 int is_zero(CF *ptr)
@@ -193,6 +194,9 @@ int is_univariate(CF *ptr)
   CanonicalForm *cfp = (CanonicalForm*) ptr;
   return (cfp->isUnivariate());
 }
+
+// -----------------------------------------------------------------------------
+// base domain predicates
 
 extern "C" 
 int in_ZZ(CF *ptr)
@@ -223,6 +227,7 @@ int in_FF(CF *ptr)
 }
 
 // -----------------------------------------------------------------------------
+// domain predicates
 
 extern "C" 
 int in_BaseDomain(CF *ptr)
@@ -246,12 +251,13 @@ int in_PolyDomain(CF *ptr)
 }
 
 // -----------------------------------------------------------------------------
+// imm_value, degree, level
 
 extern "C" 
-int smallint_value(CF *ptr)
+long int smallint_value(CF *ptr)
 {
   CanonicalForm *cfp = (CanonicalForm*) ptr;
-  return (cfp->intval());
+  return (cfp->intval());     // returns a long!!!
 }
 
 extern "C" 
@@ -278,7 +284,26 @@ CF *index_poly(CF *ptr, int idx)
   return cfp2;
 }
 
+extern "C" 
+CF *map_into(CF *ptr)
+{
+  CanonicalForm *cfp1 = (CanonicalForm*) ptr;
+  CanonicalForm *cfp2 = new CanonicalForm( cfp1->mapinto() );
+  return cfp2;
+}
+
+extern "C" 
+CF *substitute(CF *ptr1, Var *ptrv, CF *ptr2)
+{
+  CanonicalForm *cfp1 = (CanonicalForm*) ptr1;
+  Variable      *varp = (Variable*     ) ptrv;
+  CanonicalForm *cfp2 = (CanonicalForm*) ptr2;
+  CanonicalForm *cfp3 = new CanonicalForm( (*cfp1)( *cfp2 , *varp ) );
+  return cfp3;
+}
+
 // -----------------------------------------------------------------------------
+// numerator and denominator
 
 extern "C" 
 CF *numer(CF *ptr)
@@ -297,6 +322,7 @@ CF *denom(CF *ptr)
 }
 
 // -----------------------------------------------------------------------------
+// binary operations
 
 extern "C" 
 CF *plus(CF *ptr1, CF* ptr2)
@@ -325,9 +351,69 @@ CF *times(CF *ptr1, CF* ptr2)
   return cfp3;
 }
 
-// -----------------------------------------------------------------------------
+extern "C" 
+int is_equal(CF *ptr1, CF* ptr2)
+{
+  CanonicalForm *cfp1 = (CanonicalForm*) ptr1;
+  CanonicalForm *cfp2 = (CanonicalForm*) ptr2;  
+  return ( (*cfp1) == (*cfp2) );
+}
 
-/*
+// -----------------------------------------------------------------------------
+// GMP conversion
+
+extern "C" 
+int get_gf_value(CF *ptr)
+{
+  CanonicalForm *cfp = (CanonicalForm*) ptr;
+  return gf_value( *cfp );
+}
+
+extern "C" 
+void get_gmp_numerator(CF *ptr, mpz_ptr tgt)
+{
+  CanonicalForm *cfp = (CanonicalForm*) ptr;
+  gmp_numerator( *cfp , tgt );
+}
+
+extern "C" 
+void get_gmp_denominator(CF *ptr, mpz_ptr tgt)
+{
+  CanonicalForm *cfp = (CanonicalForm*) ptr;
+  gmp_denominator( *cfp , tgt );
+}
+
+extern "C" 
+CF *make_ZZ_from_gmp(mpz_srcptr src)
+{
+  mpz_t copy;
+  mpz_init_set(copy,src);
+  // make_cf DOES NOT COPY, just copies the header (mpz_t structure)...
+  // ...so we have to copy it here because our src is ephemeral.
+  CanonicalForm *cfp = new CanonicalForm( make_cf(copy) );     
+  return cfp;
+}
+
+extern "C" 
+CF *make_QQ_from_gmp(mpz_srcptr src1, mpz_srcptr src2, int normalize_flag )
+{
+  mpz_t copy1;
+  mpz_t copy2;
+  mpz_init_set(copy1,src1);
+  mpz_init_set(copy2,src2);
+  CanonicalForm *cfp = new CanonicalForm( make_cf( copy1 , copy2 , normalize_flag ) );
+  return cfp;
+}
+
+extern "C" 
+CF *make_GF(int z)
+{
+  CanonicalForm *cfp = new CanonicalForm( make_cf_from_gf(z) );
+  return cfp;
+}
+
+
+/*  
 void gmp_numerator ( const CanonicalForm & f, mpz_ptr result );
 
 void gmp_denominator ( const CanonicalForm & f, mpz_ptr result );
@@ -341,3 +427,27 @@ CanonicalForm make_cf ( const mpz_ptr n, const mpz_ptr d, bool normalize );
 CanonicalForm make_cf_from_gf ( const int z );
 */
 
+
+// -----------------------------------------------------------------------------
+
+extern "C"
+int get_characteristic()
+{
+  return getCharacteristic();
+}
+
+extern "C"
+void set_characteristic1(int c)
+{
+  setCharacteristic(c);
+}
+
+/*
+void setCharacteristic( int c ); // -> Fp && Q
+void setCharacteristic( int c, int n ); // -> PrimePower
+void setCharacteristic( int c, int n, char name ); // -> GF(q)
+
+int getCharacteristic();
+*/
+
+// -----------------------------------------------------------------------------

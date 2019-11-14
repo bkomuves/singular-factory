@@ -13,6 +13,9 @@ import Foreign.Ptr
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
 
+import Numeric.GMP.Types
+import qualified Numeric.GMP.Utils as GMP 
+
 --------------------------------------------------------------------------------
 
 data Variable
@@ -178,7 +181,7 @@ isInCoeffDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_CoeffDomain ptr)
 isInPolyDomain :: CF -> IO Bool
 isInPolyDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_PolyDomain ptr)
 
-foreign import ccall "smallint_value" c_smallint_value :: Ptr CanonicalForm -> IO CInt
+foreign import ccall "smallint_value" c_smallint_value :: Ptr CanonicalForm -> IO CLong   -- !!!
 foreign import ccall "degree_of"      c_degree_of      :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "level_of"       c_level_of       :: Ptr CanonicalForm -> IO CInt
 
@@ -201,13 +204,30 @@ getDenom :: CF -> IO CF
 getDenom cf = withForeignPtr cf $ \ptr -> makeCF =<< (c_denom ptr)
 
 foreign import ccall "index_poly" c_index_poly :: Ptr CanonicalForm -> Int -> IO (Ptr CanonicalForm)
+foreign import ccall "map_into"   c_map_into   :: Ptr CanonicalForm -> IO (Ptr CanonicalForm)
+foreign import ccall "substitute" c_substitute :: Ptr CanonicalForm -> Ptr Variable -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
 
+-- | Get the given degree part
 getCfAtIndex :: CF -> Int -> IO CF
 getCfAtIndex cf idx = withForeignPtr cf $ \ptr -> makeCF =<< (c_index_poly ptr $ fromIntegral idx)
+
+-- | Map into the current base domain
+mapInto :: CF -> IO CF
+mapInto cf = withForeignPtr cf $ \ptr -> makeCF =<< (c_map_into ptr)
+
+-- | Map into the current base domain
+substituteIO :: Var -> CF -> (CF -> IO CF)
+substituteIO var what cf = 
+  withForeignPtr var $ \pvar -> 
+    withForeignPtr what $ \pwhat -> 
+      withForeignPtr cf $ \pcf -> 
+        makeCF =<< (c_substitute pcf pvar pwhat)
 
 foreign import ccall "plus"  c_plus  :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
 foreign import ccall "minus" c_minus :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
 foreign import ccall "times" c_times :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
+
+foreign import ccall "is_equal" c_is_equal :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO CInt
 
 plusIO :: CF -> CF -> IO CF
 plusIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_plus p q)
@@ -218,8 +238,52 @@ minusIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_mi
 timesIO :: CF -> CF -> IO CF
 timesIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_times p q)
 
+isEqualIO :: CF -> CF -> IO Bool
+isEqualIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> liftBool (c_is_equal p q)
+
 --------------------------------------------------------------------------------
 
+foreign import ccall "get_gmp_numerator"   c_get_gmp_numerator   :: Ptr CanonicalForm -> Ptr MPZ -> IO ()
+foreign import ccall "get_gmp_denominator" c_get_gmp_denominator :: Ptr CanonicalForm -> Ptr MPZ -> IO ()
+
+getGmpNumerator :: CF -> IO Integer
+getGmpNumerator cf =
+  withForeignPtr cf $ \cfp -> 
+    GMP.withOutInteger_ (\mpz_ptr -> c_get_gmp_numerator cfp mpz_ptr)
+
+getGmpDenominator :: CF -> IO Integer
+getGmpDenominator cf =
+  withForeignPtr cf $ \cfp -> 
+    GMP.withOutInteger_ (\mpz_ptr -> c_get_gmp_denominator cfp mpz_ptr)
+
+foreign import ccall "make_ZZ_from_gmp" c_make_ZZ_from_gmp  :: Ptr MPZ -> IO (Ptr CanonicalForm)
+foreign import ccall "make_QQ_from_gmp" c_make_QQ_from_gmp  :: Ptr MPZ -> Ptr MPZ -> CInt -> IO (Ptr CanonicalForm)
+
+makeIntegerCF :: Integer -> IO CF
+makeIntegerCF n = 
+  GMP.withInInteger n $ \mpz_ptr -> 
+    makeCF =<< (c_make_ZZ_from_gmp mpz_ptr)
+
+makeRationalCF :: Rational -> IO CF
+makeRationalCF n = 
+  GMP.withInInteger (numerator n) $ \mpz_ptr1 -> 
+    GMP.withInInteger (denominator n) $ \mpz_ptr2 ->  
+      makeCF =<< (c_make_QQ_from_gmp mpz_ptr1 mpz_ptr2 0)
+
+--------------------------------------------------------------------------------
+
+foreign import ccall "get_characteristic"  c_get_characteristic  :: IO CInt
+foreign import ccall "set_characteristic1" c_set_characteristic1 :: CInt -> IO ()
+
+getCharacteristic :: IO Int
+getCharacteristic = fromIntegral <$> c_get_characteristic
+
+setCharacteristic1 :: Int -> IO ()
+setCharacteristic1 = c_set_characteristic1 . fromIntegral
+
+--------------------------------------------------------------------------------
+
+{-
 test = do
   cf <- newEmptyCF
   print =<< isZero cf
@@ -230,4 +294,5 @@ test = do
   cf <- newSmallConstCF 2
   print =<< isZero cf
   print =<< isOne  cf
+-}
 
