@@ -6,6 +6,7 @@ module CanonicalForm where
 
 --------------------------------------------------------------------------------
 
+import Data.Word
 import Data.Ratio
 
 import Foreign.C
@@ -29,6 +30,18 @@ type Fac     = ForeignPtr Factor
 type FacList = ForeignPtr FactorList
 
 --------------------------------------------------------------------------------
+-- * initialization
+
+-- | Apparently we need to manually find the directory containing the GF tables...
+--
+-- On my debian install it is at @/usr/share/singular/factory/gftables/@, but how
+-- to figure that out???
+foreign import ccall "set_gftable_dir" set_gftable_dir :: Ptr CChar -> IO ()
+
+-- void set_gftable_dir(char *d);
+
+--------------------------------------------------------------------------------
+-- * memory management
 
 foreign import ccall "&free_var"
   varFinalizerPtr :: FunPtr (Ptr Variable -> IO ()) 
@@ -55,6 +68,7 @@ makeFacList :: Ptr FactorList -> IO FacList
 makeFacList = newForeignPtr faclistFinalizerPtr
 
 --------------------------------------------------------------------------------
+-- * variables
 
 foreign import ccall "new_var" c_new_var :: CInt -> IO (Ptr Variable)
 
@@ -62,6 +76,7 @@ newVar :: Int -> IO Var
 newVar level = makeVar =<< c_new_var (fromIntegral level)
 
 --------------------------------------------------------------------------------
+-- * factors
 
 foreign import ccall "get_factor" c_get_factor :: Ptr Factor -> IO (Ptr CanonicalForm)
 
@@ -80,11 +95,15 @@ unpackFactor fac = do
   return (cf,expo)
 
 --------------------------------------------------------------------------------
+-- * lists
 
 foreign import ccall "get_list_length" c_get_list_length :: Ptr FactorList -> IO CInt
 
 getListLength :: FacList -> IO Int
 getListLength faclist = withForeignPtr faclist $ \ptr -> fromIntegral <$> c_get_list_length ptr
+
+--------------------------------------------------------------------------------
+-- * factorization
 
 foreign import ccall "flatten_faclist" c_flatten_faclist :: Ptr FactorList -> Ptr (Ptr Factor) -> IO ()
 
@@ -108,6 +127,7 @@ factorize :: CF -> IO [(CF,Int)]
 factorize cf = unpackFactorList =<< factorize' cf
 
 --------------------------------------------------------------------------------
+-- * basic CFs
 
 foreign import ccall "empty_cf" c_empty_cf :: IO (Ptr CanonicalForm)
  
@@ -129,6 +149,7 @@ varPowCF :: Var -> Int -> IO CF
 varPowCF var expo = withForeignPtr var $ \vptr -> makeCF =<< c_var_pow_cf vptr expo
 
 --------------------------------------------------------------------------------
+-- * basic CF predicates
 
 liftBool :: IO CInt -> IO Bool
 liftBool action = action >>= \k -> return (k/=0)
@@ -181,18 +202,25 @@ isInCoeffDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_CoeffDomain ptr)
 isInPolyDomain :: CF -> IO Bool
 isInPolyDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_PolyDomain ptr)
 
-foreign import ccall "smallint_value" c_smallint_value :: Ptr CanonicalForm -> IO CLong   -- !!!
+--------------------------------------------------------------------------------
+-- * basic properties
+
 foreign import ccall "degree_of"      c_degree_of      :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "level_of"       c_level_of       :: Ptr CanonicalForm -> IO CInt
-
-getSmallIntValue :: CF -> IO Int
-getSmallIntValue cf = withForeignPtr cf $ \ptr -> fromIntegral <$> (c_smallint_value ptr)
 
 getDegree :: CF -> IO Int
 getDegree cf = withForeignPtr cf $ \ptr -> fromIntegral <$> (c_degree_of ptr)
 
 getLevel :: CF -> IO Int
 getLevel cf = withForeignPtr cf $ \ptr -> fromIntegral <$> (c_level_of ptr)
+
+--------------------------------------------------------------------------------
+-- * small values
+
+foreign import ccall "smallint_value" c_smallint_value :: Ptr CanonicalForm -> IO CLong   -- !!!
+
+getSmallIntValue :: CF -> IO Int
+getSmallIntValue cf = withForeignPtr cf $ \ptr -> fromIntegral <$> (c_smallint_value ptr)
 
 foreign import ccall "numer" c_numer :: Ptr CanonicalForm -> IO (Ptr CanonicalForm)
 foreign import ccall "denom" c_denom :: Ptr CanonicalForm -> IO (Ptr CanonicalForm)
@@ -206,6 +234,9 @@ getDenom cf = withForeignPtr cf $ \ptr -> makeCF =<< (c_denom ptr)
 foreign import ccall "index_poly" c_index_poly :: Ptr CanonicalForm -> Int -> IO (Ptr CanonicalForm)
 foreign import ccall "map_into"   c_map_into   :: Ptr CanonicalForm -> IO (Ptr CanonicalForm)
 foreign import ccall "substitute" c_substitute :: Ptr CanonicalForm -> Ptr Variable -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
+
+--------------------------------------------------------------------------------
+-- * Polynomial operations
 
 -- | Get the given degree part
 getCfAtIndex :: CF -> Int -> IO CF
@@ -222,6 +253,9 @@ substituteIO var what cf =
     withForeignPtr what $ \pwhat -> 
       withForeignPtr cf $ \pcf -> 
         makeCF =<< (c_substitute pcf pvar pwhat)
+
+--------------------------------------------------------------------------------
+-- * Binary operations
 
 foreign import ccall "plus"  c_plus  :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
 foreign import ccall "minus" c_minus :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
@@ -242,6 +276,7 @@ isEqualIO :: CF -> CF -> IO Bool
 isEqualIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> liftBool (c_is_equal p q)
 
 --------------------------------------------------------------------------------
+-- * GMP compatibility layer
 
 foreign import ccall "get_gmp_numerator"   c_get_gmp_numerator   :: Ptr CanonicalForm -> Ptr MPZ -> IO ()
 foreign import ccall "get_gmp_denominator" c_get_gmp_denominator :: Ptr CanonicalForm -> Ptr MPZ -> IO ()
@@ -271,6 +306,7 @@ makeRationalCF n =
       makeCF =<< (c_make_QQ_from_gmp mpz_ptr1 mpz_ptr2 0)
 
 --------------------------------------------------------------------------------
+-- * Base domain characteristic
 
 foreign import ccall "get_characteristic"  c_get_characteristic  :: IO CInt
 foreign import ccall "set_characteristic1" c_set_characteristic1 :: CInt -> IO ()
@@ -282,17 +318,4 @@ setCharacteristic1 :: Int -> IO ()
 setCharacteristic1 = c_set_characteristic1 . fromIntegral
 
 --------------------------------------------------------------------------------
-
-{-
-test = do
-  cf <- newEmptyCF
-  print =<< isZero cf
-  print =<< isOne  cf
-  cf <- newSmallConstCF 1
-  print =<< isZero cf
-  print =<< isOne  cf
-  cf <- newSmallConstCF 2
-  print =<< isZero cf
-  print =<< isOne  cf
--}
 

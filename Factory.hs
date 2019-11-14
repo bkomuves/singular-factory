@@ -1,7 +1,7 @@
 
 -- | Bindings to singular-factory
 
-{-# LANGUAGE BangPatterns, DataKinds, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE CPP, BangPatterns, DataKinds, TypeSynonymInstances, FlexibleInstances #-}
 module Factory where
 
 --------------------------------------------------------------------------------
@@ -9,6 +9,7 @@ module Factory where
 import Data.List
 import Data.Ratio
 import Data.Char
+import Data.Word
 
 import Control.Monad
 
@@ -17,6 +18,10 @@ import Data.Proxy
 
 import System.IO.Unsafe as Unsafe
 
+import Foreign.C.String
+import System.FilePath
+import System.Directory
+
 import CanonicalForm
 import DList as DList
 
@@ -24,12 +29,7 @@ import Numeric.GMP.Types
 import qualified Numeric.GMP.Utils as GMP 
 
 --------------------------------------------------------------------------------
-
--- | The maximum prime characteristic Factory can handle
-maxCharacteristic :: Int
-maxCharacteristic = 536870909     -- 2^29-3
-
---------------------------------------------------------------------------------
+-- * tests
 
 pk :: [Var] -> Int -> CF
 pk vars k = Unsafe.unsafePerformIO $ do
@@ -42,14 +42,12 @@ pkn vars k = Unsafe.unsafePerformIO $ do
   return $ 1 - foldl1' (+) terms
 
 factory_main = do
-  char <- getCharacteristic 
-  putStrLn $ "current characteristic = " ++ show char
-{-
-  setCharacteristic1 19 
-  char <- getCharacteristic 
-  putStrLn $ "current characteristic = " ++ show char
--}
+  initGFTables Nothing
 
+  char <- getCharacteristic 
+  putStrLn $ "current characteristic = " ++ show char
+
+{-
   cf <- makeIntegerCF 12345
   print =<< getZZ cf
 
@@ -58,6 +56,7 @@ factory_main = do
 
   cf <- makeRationalCF (123142414918234249 / 7324433294752894)
   print =<< getQQ cf
+-}
 
   vars <- mapM newVar [1..3]
   let p1 = pk vars 1
@@ -71,20 +70,118 @@ factory_main = do
       test5 = p1^8 * p2^8 * p3^8 - 1
       test6 = sum [ (pk vars k)^10 * (pkn vars k)^10 - 1 | k <-[1..10] ]
       test7 = p1^9 * p2^9 * p3^9 
-      test8 = p1^20
+      test8 = p1^9 - 1
 
   putStrLn "factory test"
 
+  setCharacteristic1 19 --32003 
+  char <- getCharacteristic 
+  putStrLn $ "current characteristic = " ++ show char
+
+  test8 <- mapInto test8
+  let what = test8
+
   putStrLn "\ninput:"
-  printCF test8
+  printCF what
 
   putStrLn "\nfactors:"
-  facs <- factorize test8
+  facs <- factorize what
   forM facs $ \(fac,expo) -> do
     putStr $ "expo = " ++ show expo ++ " | " 
     printCF fac
 
+  putStrLn "\nsanity chack:"
+  let test = product $ map (\(fac,expo) -> fac^expo) facs
+  printCF (test - what)
+
 --------------------------------------------------------------------------------
+
+-- | The maximum prime characteristic Factory can handle
+maxCharacteristic :: Int
+maxCharacteristic = 536870909     -- 2^29-3
+
+--------------------------------------------------------------------------------
+-- * Initialization
+
+-- | Set the location of the small finite field table files.
+--
+-- If you know where they are located, please set it.
+-- If you don't know, we try to guess it, but I have no idea how
+-- to figure this out in general (pkg-config does not seem to have this information...)
+--
+initGFTables :: Maybe FilePath -> IO ()
+initGFTables mbdir = case mbdir of
+  Just fpath -> setGFTablesDir fpath
+  Nothing    -> guessGFTablesDir >>= \d -> case d of
+    Just fpath -> do 
+      -- putStrLn $ "gftables dir = " ++ (fpath </> "gftables")
+      setGFTablesDir fpath
+    Nothing    -> error "FATAL: cannot find factory's gftables"
+
+setGFTablesDir :: FilePath -> IO ()
+setGFTablesDir fpath0 = do
+  fpath1 <- canonicalizePath fpath0
+  withCString (fpath1 ++ "/") $ \ptr -> set_gftable_dir ptr
+
+--------------------------------------------------------------------------------
+
+guessGFTablesDir :: IO (Maybe FilePath)
+guessGFTablesDir = do
+
+#if defined(linux_HOST_OS)
+
+  -- Linux
+  id <$>
+    test "/usr/share/singular/factory" >>>
+    test "/usr/share/singular"         >>>
+    test "/usr/share/factory"          >>>
+    test "/usr/local/share/singular/factory" >>>
+    test "/usr/local/share/singular"   >>>
+    test "/usr/local/share/factory" 
+
+#elif defined(darwin_HOST_OS)
+
+  -- macOS
+  return Nothing
+
+#elif defined(mingw32_HOST_OS) || defined(mingw64_HOST_OS) 
+
+  -- windows / cygwin
+  cygwin_root <- readCreateProcess (shell "cygpath -w /" "")
+  let test1 dir = test (cygwin_root </> dir)
+  id <$>
+    test1 "/usr/share/singular/factory" >>>
+    test1 "/usr/share/singular"         >>>
+    test1 "/usr/share/factory"          >>>
+    test1 "/usr/local/share/singular/factory" >>>
+    test1 "/usr/local/share/singular"   >>>
+    test1 "/usr/local/share/factory" 
+
+#else
+
+  -- unknown OS
+  return Nothing
+
+#endif
+   
+  where 
+
+    infixr 5 >>>
+
+    (>>>) :: IO (Maybe a) -> IO (Maybe a) -> IO (Maybe a) 
+    (>>>) action1 action2 = do 
+      mb <- action1 
+      case mb of 
+        Just x  -> return (Just x)
+        Nothing -> action2
+      
+    test :: FilePath -> IO (Maybe FilePath)
+    test dir = doesFileExist (dir </> "gftables/361") >>= \b -> if b 
+                 then return (Just dir) 
+                 else return Nothing
+
+--------------------------------------------------------------------------------
+-- * Basic operations and instances
 
 instance Num CF where
   fromInteger n = Unsafe.unsafePerformIO $ newSmallConstCF $ fromIntegral n     -- BIG INTS ARE NOT HANDLED!!!
@@ -107,6 +204,7 @@ printCF cf = do
   putStrLn $ intercalate " + " (map prettyTerm terms)
 
 --------------------------------------------------------------------------------
+-- * Base domains
 
 data BaseValue
   = ZZ !Integer
@@ -132,6 +230,7 @@ prettyBaseValue val = case val of
   FF k -> "<" ++ show k ++ ">"
 
 --------------------------------------------------------------------------------
+-- * Monomials
 
 type Level = Int
 type Expo  = Int
@@ -152,6 +251,7 @@ prettyMonom (Monom ves) = intercalate "*" (map f ves) where
   g level = [chr (96 + level)]
 
 ----------------------------------------
+-- * coefficients
 
 type Coeff = BaseValue           -- TEMPORARY HACK
 
@@ -161,6 +261,7 @@ coeffIsOne = baseValueIsOne
 prettyCoeff = prettyBaseValue
 
 ----------------------------------------
+-- * Terms
 
 data Term 
   = Term !Coeff !Monom
@@ -173,6 +274,7 @@ prettyTerm (Term coeff monom)
   | otherwise          = prettyCoeff coeff ++ "*" ++ prettyMonom monom
 
 --------------------------------------------------------------------------------
+-- * Marshalling from CF
 
 getZZ :: CF -> IO (Maybe Integer)
 getZZ cf = isInZZ cf >>= \b -> case b of
