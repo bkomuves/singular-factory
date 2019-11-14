@@ -12,7 +12,7 @@ algebraic and trancendental extensions of these.
 Installation instructions
 =========================
 
-Currently the library works on macOS with Homebrew, and on Linux (tested with Debian).
+Currently the library works on macOS (tested with Homebrew), and on Linux (tested with Debian).
 
 
 macOS 
@@ -22,18 +22,18 @@ macOS
 
 1. Install Homebrew from https://brew.sh (if not already installed).
 2. Install pkg-config using homebrew (if not already installed):
-
-    $ brew install pkg-config
-
+```
+$ brew install pkg-config
+```
 3. Install singular:  
-
-    $ brew install singular
-
+```    
+$ brew install singular
+```
 4. Install this library:
-
-    $ cabal update
-    $ cabal install --lib singular-factory
-
+```    
+$ cabal update
+$ cabal install --lib singular-factory
+```    
 
 Linux
 -----
@@ -41,17 +41,18 @@ Linux
 ### On Debian:
 
 1. Install pkg-config (if not already installed): 
-
-    $ sudo apt install pkg-config
-
+```
+$ sudo apt install pkg-config
+```
 2. Install libsingular:
-
-    $ sudo apt install libsingular4-dev
-
+```   
+$ sudo apt install libsingular4-dev
+```
 3. Install this library:
-
-    $ cabal update
-    $ cabal install --lib singular-factory
+```
+$ cabal update
+$ cabal install --lib singular-factory
+```
 
 ### Other Linux distros:
 
