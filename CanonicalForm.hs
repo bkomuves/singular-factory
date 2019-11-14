@@ -30,17 +30,6 @@ type Fac     = ForeignPtr Factor
 type FacList = ForeignPtr FactorList
 
 --------------------------------------------------------------------------------
--- * initialization
-
--- | Apparently we need to manually find the directory containing the GF tables...
---
--- On my debian install it is at @/usr/share/singular/factory/gftables/@, but how
--- to figure that out???
-foreign import ccall "set_gftable_dir" set_gftable_dir :: Ptr CChar -> IO ()
-
--- void set_gftable_dir(char *d);
-
---------------------------------------------------------------------------------
 -- * memory management
 
 foreign import ccall "&free_var"

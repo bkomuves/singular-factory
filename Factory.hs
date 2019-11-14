@@ -1,7 +1,7 @@
 
 -- | Bindings to singular-factory
 
-{-# LANGUAGE CPP, BangPatterns, DataKinds, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE BangPatterns, DataKinds, TypeSynonymInstances, FlexibleInstances #-}
 module Factory where
 
 --------------------------------------------------------------------------------
@@ -18,15 +18,12 @@ import Data.Proxy
 
 import System.IO.Unsafe as Unsafe
 
-import Foreign.C.String
-import System.FilePath
-import System.Directory
+import Numeric.GMP.Types
+import qualified Numeric.GMP.Utils as GMP 
 
 import CanonicalForm
 import DList as DList
-
-import Numeric.GMP.Types
-import qualified Numeric.GMP.Utils as GMP 
+import GFTables
 
 --------------------------------------------------------------------------------
 -- * tests
@@ -42,8 +39,8 @@ pkn vars k = Unsafe.unsafePerformIO $ do
   return $ 1 - foldl1' (+) terms
 
 factory_main = do
-  initGFTables Nothing
-
+  tryAndInitGFTables
+  
   char <- getCharacteristic 
   putStrLn $ "current characteristic = " ++ show char
 
@@ -74,7 +71,7 @@ factory_main = do
 
   putStrLn "factory test"
 
-  setCharacteristic1 19 --32003 
+  setCharacteristic1 32003     -- 19 
   char <- getCharacteristic 
   putStrLn $ "current characteristic = " ++ show char
 
@@ -101,86 +98,6 @@ maxCharacteristic :: Int
 maxCharacteristic = 536870909     -- 2^29-3
 
 --------------------------------------------------------------------------------
--- * Initialization
-
--- | Set the location of the small finite field table files.
---
--- If you know where they are located, please set it.
--- If you don't know, we try to guess it, but I have no idea how
--- to figure this out in general (pkg-config does not seem to have this information...)
---
-initGFTables :: Maybe FilePath -> IO ()
-initGFTables mbdir = case mbdir of
-  Just fpath -> setGFTablesDir fpath
-  Nothing    -> guessGFTablesDir >>= \d -> case d of
-    Just fpath -> do 
-      -- putStrLn $ "gftables dir = " ++ (fpath </> "gftables")
-      setGFTablesDir fpath
-    Nothing    -> error "FATAL: cannot find factory's gftables"
-
-setGFTablesDir :: FilePath -> IO ()
-setGFTablesDir fpath0 = do
-  fpath1 <- canonicalizePath fpath0
-  withCString (fpath1 ++ "/") $ \ptr -> set_gftable_dir ptr
-
---------------------------------------------------------------------------------
-
-guessGFTablesDir :: IO (Maybe FilePath)
-guessGFTablesDir = do
-
-#if defined(linux_HOST_OS)
-
-  -- Linux
-  id <$>
-    test "/usr/share/singular/factory" >>>
-    test "/usr/share/singular"         >>>
-    test "/usr/share/factory"          >>>
-    test "/usr/local/share/singular/factory" >>>
-    test "/usr/local/share/singular"   >>>
-    test "/usr/local/share/factory" 
-
-#elif defined(darwin_HOST_OS)
-
-  -- macOS
-  return Nothing
-
-#elif defined(mingw32_HOST_OS) || defined(mingw64_HOST_OS) 
-
-  -- windows / cygwin
-  cygwin_root <- readCreateProcess (shell "cygpath -w /" "")
-  let test1 dir = test (cygwin_root </> dir)
-  id <$>
-    test1 "/usr/share/singular/factory" >>>
-    test1 "/usr/share/singular"         >>>
-    test1 "/usr/share/factory"          >>>
-    test1 "/usr/local/share/singular/factory" >>>
-    test1 "/usr/local/share/singular"   >>>
-    test1 "/usr/local/share/factory" 
-
-#else
-
-  -- unknown OS
-  return Nothing
-
-#endif
-   
-  where 
-
-    infixr 5 >>>
-
-    (>>>) :: IO (Maybe a) -> IO (Maybe a) -> IO (Maybe a) 
-    (>>>) action1 action2 = do 
-      mb <- action1 
-      case mb of 
-        Just x  -> return (Just x)
-        Nothing -> action2
-      
-    test :: FilePath -> IO (Maybe FilePath)
-    test dir = doesFileExist (dir </> "gftables/361") >>= \b -> if b 
-                 then return (Just dir) 
-                 else return Nothing
-
---------------------------------------------------------------------------------
 -- * Basic operations and instances
 
 instance Num CF where
@@ -191,8 +108,11 @@ instance Num CF where
   abs    = error "CF: Num/abs is not implemented"
   signum = error "CF: Num/signum is not implemented"
 
-instance Eq CF where
-  (==) x y = Unsafe.unsafePerformIO (isEqualIO x y)
+eqCF :: CF -> CF -> Bool
+eqCF x y = Unsafe.unsafePerformIO (isEqualIO x y)
+
+{- there is already an instance... -}
+-- instance Eq CF where (==) = eqCF
 
 substitute :: Var -> CF -> (CF -> CF)
 substitute var what cf = Unsafe.unsafePerformIO (substituteIO var what cf)
