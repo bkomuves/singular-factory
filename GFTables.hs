@@ -87,7 +87,7 @@ testDir dir = doesFileExist (dir </> "gftables/361") >>= \b -> if b
 guessHomebrew :: IO (Maybe FilePath)
 guessHomebrew = do
   let brew_prefix = "/usr/local"            -- TODO: maybe use "brew config" (but it's rather slow)
-  let cellar    = brew_prefix </> "cellar"
+  let cellar    = brew_prefix </> "Cellar"
   let sing_root = cellar      </> "singular"
   entries <- map (sing_root </>) <$> listDirectory sing_root
   subdirs <- filterM doesDirectoryExist entries

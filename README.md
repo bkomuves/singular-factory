@@ -5,8 +5,8 @@ Haskell bindings to the Singular-Factory multivariate polynomial factorization e
 the University of Kaiserslautern, and [Factory](https://www.singular.uni-kl.de/dox/html/factory_page.html)
 is the polynomial factorization engine of Singular.
 
-It handles multivariate polynomials over the integers, rationals, finite fields, and
-algebraic and trancendental extensions of these. 
+It handles multivariate polynomials over the integers, rationals, and finite fields
+(and also algebraic and trancendental extensions of these).
 
 
 Installation instructions
