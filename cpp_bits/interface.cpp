@@ -29,9 +29,23 @@ void free_var (Var *ptr)
 }
 
 extern "C" 
-Var *new_var(int level)
+Var *new_var_level(int level)
 {
   Variable *varp = new Variable(level);
+  return (void*)varp;
+}
+
+extern "C" 
+Var *new_var_name(char name)
+{
+  Variable *varp = new Variable(name);
+  return (void*)varp;
+}
+
+extern "C" 
+Var *new_var_level_name(int level, char name)
+{
+  Variable *varp = new Variable(level,name);
   return (void*)varp;
 }
 
@@ -41,6 +55,22 @@ Var *root_of(CF *ptr)
   CanonicalForm *cfp = (CanonicalForm*) ptr;
   Variable *varp = new Variable( rootOf( *cfp ) );
   return (void*)varp;
+}
+
+// -------------------------------------
+
+extern "C"
+int get_var_level(Var *ptr)
+{
+  Variable *varp = (Variable*) ptr;
+  return varp->level();
+}
+
+extern "C"
+char get_var_name(Var *ptr)
+{
+  Variable *varp = (Variable*) ptr;
+  return varp->name();
 }
 
 extern "C"
@@ -339,6 +369,14 @@ int level_of(CF *ptr)
   return (cfp->level());
 }
 
+extern "C" 
+Var *mvar_of(CF *ptr)
+{
+  CanonicalForm *cfp = (CanonicalForm*) ptr;
+  Variable *varp = new Variable( cfp->mvar() );
+  return varp;
+}
+
 // -----------------------------------------------------------------------------
 
 extern "C" 
@@ -545,6 +583,7 @@ int get_characteristic()
   return getCharacteristic();
 }
 
+// prime fields and QQ
 extern "C"
 void set_characteristic1(int c)
 {
@@ -552,11 +591,50 @@ void set_characteristic1(int c)
 }
 
 /*
-void setCharacteristic( int c ); // -> Fp && Q
-void setCharacteristic( int c, int n ); // -> PrimePower
-void setCharacteristic( int c, int n, char name ); // -> GF(q)
-
-int getCharacteristic();
+// prime power fields (meaning FF?)
+// apparently this does not exist anymore?!?!
+extern "C"
+void set_characteristic2(int c, int n)
+{
+  setCharacteristic(c,n);
+}
 */
+
+// Galois fields
+extern "C"
+void set_characteristic3(int c, int n, char var)
+{
+  setCharacteristic(c,n,var);
+}
+
+/*
+// already defined above
+extern "C"
+int get_gf_value(CF *ptr) 
+{ 
+  CanonicalForm *cfp = (CanonicalForm*) ptr;
+  return gf_value( cfp );
+}
+*/
+
+extern "C"
+int is_FF_in_GF(CF *ptr) 
+{ 
+  CanonicalForm *cfp = (CanonicalForm*) ptr;
+  return cfp -> isFFinGF();
+}
+
+extern "C"
+int get_GF_degree() 
+{ 
+  return getGFDegree();
+}
+
+extern "C"
+CF *get_GF_generator() 
+{ 
+  return new CanonicalForm ( getGFGenerator() );
+}  
+
 
 // -----------------------------------------------------------------------------

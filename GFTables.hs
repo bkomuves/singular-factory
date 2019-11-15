@@ -33,7 +33,7 @@ initGFTables mbdir = case mbdir of
   Just fpath -> setGFTablesDir fpath
   Nothing    -> guessGFTablesDir >>= \d -> case d of
     Just fpath -> do 
-      -- putStrLn $ "gftables dir = " ++ (fpath </> "gftables")
+      putStrLn $ "gftables dir = " ++ (fpath </> "gftables")
       setGFTablesDir fpath
     Nothing    -> error "FATAL: cannot find factory's gftables"
 
@@ -91,8 +91,8 @@ guessHomebrew = do
   let sing_root = cellar      </> "singular"
   entries <- map (sing_root </>) <$> listDirectory sing_root
   subdirs <- filterM doesDirectoryExist entries
-  print entries
-  print subdirs
+  -- print entries
+  -- print subdirs
   foldl (>>>) (return Nothing) [ testDir (sing_root </> d </> "share/factory") | d <- subdirs]
 
 -- generic Linux

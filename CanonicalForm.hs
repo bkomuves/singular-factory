@@ -68,17 +68,35 @@ makeFacList = newForeignPtr faclistFinalizerPtr
 --------------------------------------------------------------------------------
 -- * variables
 
-foreign import ccall "new_var" c_new_var :: CInt -> IO (Ptr Variable)
-foreign import ccall "root_of" c_root_of :: Ptr CanonicalForm -> IO (Ptr Variable)
+foreign import ccall "new_var_level"      c_new_var_level      :: CInt  -> IO (Ptr Variable)
+foreign import ccall "new_var_name"       c_new_var_name       :: CChar -> IO (Ptr Variable)
+foreign import ccall "new_var_level_name" c_new_var_level_name :: CInt -> CChar -> IO (Ptr Variable)
 
-newVar :: Int -> IO Var
-newVar level = makeVar =<< c_new_var (fromIntegral level)
+newVarL :: Int -> IO Var
+newVarL level = makeVar =<< c_new_var_level (fromIntegral level)
+
+newVarN :: Char -> IO Var
+newVarN name = makeVar =<< c_new_var_name (castCharToCChar name)
+
+newVarLN :: Int -> Char -> IO Var
+newVarLN level name = makeVar =<< c_new_var_level_name (fromIntegral level) (castCharToCChar name)
 
 newTransVar :: IO Var
-newTransVar = makeVar =<< c_new_var (c_level_trans)
+newTransVar = makeVar =<< c_new_var_level (c_level_trans)
+
+foreign import ccall "root_of" c_root_of :: Ptr CanonicalForm -> IO (Ptr Variable)
 
 newRootOf :: CF -> IO Var
 newRootOf cf = withForeignPtr cf $ \ptr -> makeVar =<< c_root_of ptr
+
+foreign import ccall "get_var_level" c_get_var_level :: Ptr Variable -> IO CInt
+foreign import ccall "get_var_name"  c_get_var_name  :: Ptr Variable -> IO CChar
+
+getVarLevel :: Var -> IO Int
+getVarLevel var = withForeignPtr var $ \ptr -> fromIntegral <$> (c_get_var_level ptr)
+
+getVarName :: Var -> IO Char
+getVarName var = withForeignPtr var $ \ptr -> castCCharToChar <$> (c_get_var_name ptr)
 
 foreign import ccall "has_mipo" c_has_mipo :: Ptr Variable -> IO CInt
 foreign import ccall "get_mipo" c_get_mipo :: Ptr Variable -> Ptr Variable -> IO (Ptr CanonicalForm)
@@ -237,12 +255,16 @@ isInQuotDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_QuotDomain ptr)
 
 foreign import ccall "degree_of"      c_degree_of      :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "level_of"       c_level_of       :: Ptr CanonicalForm -> IO CInt
+foreign import ccall "mvar_of"        c_mvar_of        :: Ptr CanonicalForm -> IO (Ptr Variable)
 
 getDegree :: CF -> IO Int
 getDegree cf = withForeignPtr cf $ \ptr -> fromIntegral <$> (c_degree_of ptr)
 
 getLevel :: CF -> IO Int
 getLevel cf = withForeignPtr cf $ \ptr -> fromIntegral <$> (c_level_of ptr)
+
+getMainVar :: CF -> IO Var
+getMainVar cf = withForeignPtr cf $ \ptr -> makeVar =<< (c_mvar_of ptr)
 
 --------------------------------------------------------------------------------
 -- * small values
@@ -361,12 +383,48 @@ makeRationalCF n =
 
 foreign import ccall "get_characteristic"  c_get_characteristic  :: IO CInt
 foreign import ccall "set_characteristic1" c_set_characteristic1 :: CInt -> IO ()
+-- foreign import ccall "set_characteristic2" c_set_characteristic2 :: CInt -> CInt -> IO ()
+foreign import ccall "set_characteristic3" c_set_characteristic3 :: CInt -> CInt -> CChar -> IO ()
 
 getCharacteristic :: IO Int
 getCharacteristic = fromIntegral <$> c_get_characteristic
 
+-- | prime fields and QQ
 setCharacteristic1 :: Int -> IO ()
 setCharacteristic1 = c_set_characteristic1 . fromIntegral
+
+{-
+-- | prime power fields (meaning FF?)
+-- apparently they removed this ????
+setCharacteristic2 :: Int -> Int -> IO ()
+setCharacteristic2 p n = c_set_characteristic2 (fromIntegral p) (fromIntegral n)
+-}
+
+-- | Galois fields
+setCharacteristic3 :: Int -> Int -> Char -> IO ()
+setCharacteristic3 p n ch = c_set_characteristic3 (fromIntegral p) (fromIntegral n) (castCharToCChar ch)
+
+foreign import ccall "get_gf_value"     c_get_gf_value     :: Ptr CanonicalForm -> IO CInt
+foreign import ccall "is_FF_in_GF"      c_is_FF_in_GF      :: Ptr CanonicalForm -> IO CInt
+foreign import ccall "get_GF_degree"    c_get_GF_degree    :: IO CInt
+foreign import ccall "get_GF_generator" c_get_GF_generator :: IO (Ptr CanonicalForm)
+
+-- | This returns the exponent of the canonical generator.
+-- If the input is zero, it appears to return the order of the field, q, but don't rely on this...
+getGFValue :: CF -> IO Int
+getGFValue cf = withForeignPtr cf $ \ptr -> fromIntegral <$> (c_get_gf_value ptr)
+
+-- | True if element of the prime subfield
+isFFinGF :: CF -> IO Bool
+isFFinGF cf = withForeignPtr cf $ \ptr -> liftBool (c_is_FF_in_GF ptr)
+
+-- | Returns the degree of the Galois field (degree of extension over the prime field)
+getGFDegree :: IO Int
+getGFDegree = fromIntegral <$> c_get_GF_degree
+
+-- | Returns the generator of the Galois field
+getGFGenerator :: IO CF
+getGFGenerator = makeCF =<< c_get_GF_generator
 
 --------------------------------------------------------------------------------
 

@@ -7,6 +7,7 @@ module Factory where
 --------------------------------------------------------------------------------
 
 import Data.List
+import Data.Maybe
 import Data.Ratio
 import Data.Char
 import Data.Word
@@ -55,7 +56,7 @@ factory_main = do
   print =<< getQQ cf
 -}
 
-  vars@[xv,yv,zv] <- mapM newVar [1..3]
+  vars@[xv,yv,zv] <- mapM newVarL [1..3]
   [x,y,z] <- mapM varCF vars
   let p1 = pk vars 1
       p2 = pk vars 2
@@ -150,27 +151,74 @@ gcdPolyCF x y = Unsafe.unsafePerformIO (gcdPolyIO x y)
 reduceCF :: CF -> CF -> CF
 reduceCF x y = Unsafe.unsafePerformIO (reduceIO x y)
 
+showCF :: CF -> String
+showCF x = Unsafe.unsafePerformIO (showIO x)
+
+showCF_dense :: CF -> String
+showCF_dense x = Unsafe.unsafePerformIO (showIO_dense x)
+
 printCF :: CF -> IO ()
-printCF cf = do
+printCF cf = putStrLn =<< showIO cf
+
+showIO :: CF -> IO String
+showIO cf = do
   terms <- genericMarshalFromCF makeTerm cf
-  --print terms
-  putStrLn $ intercalate " + " (map prettyTerm terms)
+  return $ intercalate " + " (map prettyTerm terms)
+
+showIO_dense :: CF -> IO String
+showIO_dense cf = do
+  terms <- genericMarshalFromCF makeTerm cf
+  return $ intercalate "+" (map prettyTerm terms)
+
+--------------------------------------------------------------------------------
+-- * Galois fields
+
+-- | Values in a Galois field.
+--
+-- They can either 0, or a power of the canonical generator (of the multiplicative
+-- group, which is cyclic).
+-- 
+-- Furthermore, they can be possibly also element of the prime subfield.
+--
+data GFValue
+  = GFZero
+  | GFSubField { _gfGenExpo :: !Int , _gfModP :: !Int } 
+  | GFGenPow   { _gfGenExpo :: !Int }
+  deriving (Eq,Ord)
+
+instance Show GFValue where
+  show = showGFValue1 "#"
+
+-- | Elements of the prime subfield are shown as numbers, the rest as
+-- powers of the generator
+showGFValue1 :: String -> GFValue -> String
+showGFValue1 gen gfv = case gfv of
+  GFZero               -> "0"
+  GFSubField expo modp -> show modp
+  GFGenPow   expo      -> if expo == 1 then gen else gen ++ "^" ++ show expo
+
+-- | Elements of the prime subfield are also shown as powers of the generator
+showGFValue2 :: String -> GFValue -> String
+showGFValue2 gen gfv = case gfv of
+  GFZero               -> "0"
+  GFSubField expo modp -> if expo == 1 then gen else gen ++ "^" ++ show expo
+  GFGenPow   expo      -> if expo == 1 then gen else gen ++ "^" ++ show expo
 
 --------------------------------------------------------------------------------
 -- * Base domains
-
+            
 data BaseValue
   = ZZ !Integer
   | QQ !Rational
-  | GF !Int
   | FF !Int
+  | GF !GFValue
   deriving (Eq,Ord,Show)
 
 baseValueIsOne :: BaseValue -> Bool
 baseValueIsOne val = case val of
   ZZ n   ->  n == 1
   QQ q   ->  q == 1
-  GF k   ->  k == 1
+  GF gfv ->  case gfv of { GFSubField _ 1 -> True ; _ -> False }
   FF k   ->  k == 1
 
 prettyBaseValue :: BaseValue -> String
@@ -179,8 +227,8 @@ prettyBaseValue val = case val of
   QQ q -> case denominator q of
             1 -> show (numerator q)
             b -> show (numerator q) ++ "/" ++ show b
-  GF k -> "<" ++ show k ++ ">"
-  FF k -> "<" ++ show k ++ ">"
+  GF k -> show k -- "<" ++ show k ++ ">"
+  FF k -> show k -- "<" ++ show k ++ ">"
 
 --------------------------------------------------------------------------------
 -- * Monomials
@@ -196,11 +244,11 @@ monomIsNull :: Monom -> Bool
 monomIsNull (Monom list) = null list
 
 prettyMonom :: Monom -> String
-prettyMonom (Monom [] ) = "(1)"
+prettyMonom (Monom [] ) = "1" -- "(1)"
 prettyMonom (Monom ves) = intercalate "*" (map f ves) where
   f (v,0) = ""
   f (v,1) = g v
-  f (v,k) = g v ++ "^" ++ show k
+  f (v,k) = g v ++ "^" ++ show k  
   g level = [chr (96 + level)]
 
 ----------------------------------------
@@ -247,13 +295,6 @@ getQQ cf = isInQQ cf >>= \b -> case b of
     denom <- getGmpDenominator cf
     return $ Just $ (numer % denom)
 
-getGF :: CF -> IO (Maybe Int)
-getGF cf = isInGF cf >>= \b -> case b of
-  False -> return Nothing
-  True  -> isImmediate cf >>= \b -> case b of
-    True  -> (Just . fromIntegral) <$> getSmallIntValue cf
-    False -> error "getGF: bignums are not implemented yet"
-
 getFF :: CF -> IO (Maybe Int)
 getFF cf = isInFF cf >>= \b -> case b of
   False -> return Nothing
@@ -261,8 +302,29 @@ getFF cf = isInFF cf >>= \b -> case b of
     True  -> (Just . fromIntegral) <$> getSmallIntValue cf
     False -> error "getFF: bignums are not implemented yet"
 
+getGF :: CF -> IO (Maybe GFValue)
+getGF cf = isInGF cf >>= \b -> case b of
+  False -> return Nothing
+  True  -> isFFinGF cf >>= \b -> case b of
+    True  -> do 
+      k <- getSmallIntValue cf 
+      e <- getGFValue cf
+      return $ Just $ if (k==0) then GFZero else (GFSubField e k)
+    False -> do
+      e <- getGFValue cf
+      return $ Just $ GFGenPow e
+      
 getBaseValue :: CF -> IO (Maybe BaseValue)
 getBaseValue cf = isInBaseDomain cf >>= \b -> case b of
+  False -> return Nothing
+  True  -> getBaseValueNotGF cf >>= \mb -> case mb of
+    Just val -> return $ Just val
+    Nothing  -> getGF cf >>= \mb -> case mb of
+      Just gf  -> return $ Just (GF gf)
+      Nothing  -> return Nothing
+
+getBaseValueNotGF :: CF -> IO (Maybe BaseValue)
+getBaseValueNotGF cf = isInBaseDomain cf >>= \b -> case b of
   False -> return Nothing
   True  -> getZZ cf >>= \mb -> case mb of
     Just n  -> return $ Just (ZZ n)
@@ -270,9 +332,29 @@ getBaseValue cf = isInBaseDomain cf >>= \b -> case b of
       Just q  -> return $ Just (QQ q)
       Nothing -> getFF cf >>= \mb -> case mb of
         Just k  -> return $ Just (FF k)
-        Nothing -> getGF cf >>= \mb -> case mb of
-          Just k  -> return $ Just (GF k)
-          Nothing -> return Nothing
+        Nothing -> return Nothing
+          
+--------------------------------------------------------------------------------
+
+valueZZ :: CF -> Integer
+valueZZ cf = case Unsafe.unsafePerformIO (getZZ cf) of
+  Just n  -> n
+  Nothing -> error "valueZZ: not an integer"
+
+valueQQ :: CF -> Rational
+valueQQ cf = case Unsafe.unsafePerformIO (getQQ cf) of
+  Just n  -> n
+  Nothing -> error "valueQQ: not a rational"
+
+valueGF :: CF -> GFValue
+valueGF cf = case Unsafe.unsafePerformIO (getGF cf) of
+  Just n  -> n
+  Nothing -> error "valueGF: not a GF element"
+
+valueFF :: CF -> Int
+valueFF cf = case Unsafe.unsafePerformIO (getFF cf) of
+  Just n  -> n
+  Nothing -> error "valueFF: not a FF element"
 
 --------------------------------------------------------------------------------
 
@@ -325,28 +407,19 @@ genericMarshalFromCF_list user = worker [] where
 
 --------------------------------------------------------------------------------
 
-{-
+marshalUnivariateFromCF :: CF -> IO [(CF,Int)]
+marshalUnivariateFromCF = worker where
+  worker cf = do
+    deg <- getDegree cf
+    case deg of
+      0 -> return [(cf,0)]
+      _ -> do
+        -- level <- getLevel  cf
+        mbs <- forM [0..deg] $ \d -> do
+          this <- getCfAtIndex cf d
+          isZero this >>= \b -> if b
+            then return $ Nothing
+            else return $ Just (this,d)
+        return $ catMaybes mbs
+        
 --------------------------------------------------------------------------------
--- * high level
-
--- | Prime field
-newtype Fp (p :: Nat) = Fp Int
-
--- | Finite field
-newtype GF (q :: Nat) = GF Int
-
-class BaseDomain a 
-
-instance BaseDomain Integer
-instance BaseDomain Rational
-instance KnownNat p => BaseDomain (Fp p)
-instance KnownNat q => BaseDomain (GF q)
-
-data BaseDomain c => Trie c (n :: Nat) where
-  Zero :: KnownNat n => Trie c n
-  One  :: KnownNat n => Trie c n
-  Base :: c -> Trie c 0
-  Poly :: KnownNat n => IntMap (Trie c n) -> Trie c (n + 1)
-
---------------------------------------------------------------------------------
--}

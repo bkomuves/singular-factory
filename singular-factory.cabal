@@ -1,7 +1,7 @@
 Name:                singular-factory
 Version:             0.1
-Synopsis:            Multivariate polynomial factorization via bindings to Singular-Factory 
-Description:         Bindings to Singular-Factory. Factory is the subset of the Singular
+Synopsis:            Multivariate polynomial factorization via bindings to Singular-factory 
+Description:         Bindings to Singular-factory. Factory is the subset of the Singular
                      computer algebra system which does factorization of multivariate 
                      polynomials (over integers, rationals, and finite fields)
 License:             GPL
@@ -27,8 +27,10 @@ Library
   Exposed-Modules:     CanonicalForm
                        GFTables
                        Factory
-                       DList
+                       Domains
+                       -- Polynomial
                        Parser
+                       DList
                            
   Extensions:          ForeignFunctionInterface, CPP, BangPatterns, TypeSynonymInstances
 
