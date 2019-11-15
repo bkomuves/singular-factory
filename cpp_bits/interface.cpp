@@ -1,11 +1,22 @@
 
 #include <factory/factory.h>
 
+// -----------------------------------------------------------------------------
+// types
+
 typedef void Var;           // Variable
 typedef void CF;            // CanonicalForm
 typedef void Fac;           // CFFactor = Factor<CF>
 typedef void FacList;       // CFFList = List<CFFactor>
 typedef void Iter;          // ListIterator<CFFactor>
+
+// -----------------------------------------------------------------------------
+// constants
+
+extern "C" int level_base()  { return LEVELBASE;  }
+extern "C" int level_trans() { return LEVELTRANS; }
+extern "C" int level_quot()  { return LEVELQUOT;  }
+extern "C" int level_expr()  { return LEVELEXPR;  }
 
 // -----------------------------------------------------------------------------
 // Variable
@@ -24,8 +35,48 @@ Var *new_var(int level)
   return (void*)varp;
 }
 
+extern "C" 
+Var *root_of(CF *ptr)
+{
+  CanonicalForm *cfp = (CanonicalForm*) ptr;
+  Variable *varp = new Variable( rootOf( *cfp ) );
+  return (void*)varp;
+}
+
+extern "C"
+int has_mipo(Var *ptr)
+{
+  Variable *varp = (Variable*) ptr;
+  return hasMipo( *varp );
+}
+
+extern "C"
+CF *get_mipo(Var *ptr1 , Var *ptr2)
+{
+  Variable *varp1 = (Variable*) ptr1;
+  Variable *varp2 = (Variable*) ptr2;
+  CanonicalForm *cfp = new CanonicalForm( getMipo( *varp1 , *varp2 ) );
+  return cfp;
+}
+
+extern "C"
+void set_mipo(Var *ptr1 , CF *ptr2)
+{
+  Variable      *varp = (Variable     *) ptr1;
+  CanonicalForm *cfp  = (CanonicalForm*) ptr2;
+  setMipo( *varp, *cfp );
+}
+
+extern "C"
+void set_reduce(Var *ptr, int flag)
+{
+  Variable *varp = (Variable*) ptr;
+  setReduce( *varp , flag);
+}
+
 // -----------------------------------------------------------------------------
 // CanonicalForm
+
 extern "C" 
 void free_cf (CF *ptr)
 {
@@ -250,6 +301,20 @@ int in_PolyDomain(CF *ptr)
   return (cfp->inPolyDomain());
 }
 
+extern "C" 
+int in_Extension(CF *ptr)
+{
+  CanonicalForm *cfp = (CanonicalForm*) ptr;
+  return (cfp->inExtension());
+}
+
+extern "C" 
+int in_QuotDomain(CF *ptr)
+{
+  CanonicalForm *cfp = (CanonicalForm*) ptr;
+  return (cfp->inQuotDomain());
+}
+
 // -----------------------------------------------------------------------------
 // imm_value, degree, level
 
@@ -325,7 +390,15 @@ CF *denom(CF *ptr)
 // binary operations
 
 extern "C" 
-CF *plus(CF *ptr1, CF* ptr2)
+int is_equal(CF *ptr1, CF* ptr2)
+{
+  CanonicalForm *cfp1 = (CanonicalForm*) ptr1;
+  CanonicalForm *cfp2 = (CanonicalForm*) ptr2;  
+  return ( (*cfp1) == (*cfp2) );
+}
+
+extern "C" 
+CF *plus_cf(CF *ptr1, CF* ptr2)
 {
   CanonicalForm *cfp1 = (CanonicalForm*) ptr1;
   CanonicalForm *cfp2 = (CanonicalForm*) ptr2;
@@ -334,7 +407,7 @@ CF *plus(CF *ptr1, CF* ptr2)
 }
 
 extern "C" 
-CF *minus(CF *ptr1, CF* ptr2)
+CF *minus_cf(CF *ptr1, CF* ptr2)
 {
   CanonicalForm *cfp1 = (CanonicalForm*) ptr1;
   CanonicalForm *cfp2 = (CanonicalForm*) ptr2;
@@ -343,7 +416,7 @@ CF *minus(CF *ptr1, CF* ptr2)
 }
 
 extern "C" 
-CF *times(CF *ptr1, CF* ptr2)
+CF *times_cf(CF *ptr1, CF* ptr2)
 {
   CanonicalForm *cfp1 = (CanonicalForm*) ptr1;
   CanonicalForm *cfp2 = (CanonicalForm*) ptr2;
@@ -352,11 +425,47 @@ CF *times(CF *ptr1, CF* ptr2)
 }
 
 extern "C" 
-int is_equal(CF *ptr1, CF* ptr2)
+CF *pow_cf(CF *ptr1, int n)
 {
   CanonicalForm *cfp1 = (CanonicalForm*) ptr1;
-  CanonicalForm *cfp2 = (CanonicalForm*) ptr2;  
-  return ( (*cfp1) == (*cfp2) );
+  CanonicalForm *cfp3 = new CanonicalForm( power( *cfp1 , n ) );
+  return cfp3;
+}
+
+extern "C" 
+CF *div_cf(CF *ptr1, CF* ptr2)
+{
+  CanonicalForm *cfp1 = (CanonicalForm*) ptr1;
+  CanonicalForm *cfp2 = (CanonicalForm*) ptr2;
+  CanonicalForm *cfp3 = new CanonicalForm( div( *cfp1 , *cfp2 ) );
+  return cfp3;
+}
+
+extern "C" 
+CF *mod_cf(CF *ptr1, CF* ptr2)
+{
+  CanonicalForm *cfp1 = (CanonicalForm*) ptr1;
+  CanonicalForm *cfp2 = (CanonicalForm*) ptr2;
+  CanonicalForm *cfp3 = new CanonicalForm( mod( *cfp1 , *cfp2 ) );
+  return cfp3;
+}
+
+extern "C" 
+CF *gcd_poly_cf(CF *ptr1, CF* ptr2)
+{
+  CanonicalForm *cfp1 = (CanonicalForm*) ptr1;
+  CanonicalForm *cfp2 = (CanonicalForm*) ptr2;
+  CanonicalForm *cfp3 = new CanonicalForm( gcd_poly( *cfp1 , *cfp2 ) );
+  return cfp3;
+}
+
+extern "C" 
+CF *reduce_cf(CF *ptr1, CF* ptr2)
+{
+  CanonicalForm *cfp1 = (CanonicalForm*) ptr1;
+  CanonicalForm *cfp2 = (CanonicalForm*) ptr2;
+  CanonicalForm *cfp3 = new CanonicalForm( reduce( *cfp1 , *cfp2 ) );
+  return cfp3;
 }
 
 // -----------------------------------------------------------------------------

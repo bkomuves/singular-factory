@@ -1,5 +1,5 @@
 
--- | Bindings to singular-factory
+-- | Medium-level bindings to singular-factory
 
 {-# LANGUAGE BangPatterns, DataKinds, TypeSynonymInstances, FlexibleInstances #-}
 module Factory where
@@ -55,32 +55,50 @@ factory_main = do
   print =<< getQQ cf
 -}
 
-  vars <- mapM newVar [1..3]
+  vars@[xv,yv,zv] <- mapM newVar [1..3]
+  [x,y,z] <- mapM varCF vars
   let p1 = pk vars 1
       p2 = pk vars 2
       p3 = pk vars 3
       p4 = pk vars 4
   let test1 = p1^4 - 1
       test2 = p2^2 - 1
-      test3 = substitute (last vars) p3 test2
+      test3 = substituteIO (last vars) p3 test2
       test4 = p1^4 * p2^4 - 1
       test5 = p1^8 * p2^8 * p3^8 - 1
       test6 = sum [ (pk vars k)^10 * (pkn vars k)^10 - 1 | k <-[1..10] ]
       test7 = p1^9 * p2^9 * p3^9 
-      test8 = p1^9 - 1
+      test8 = powCF p1 4 - 1
+      test8b = (2+x+y+z)*(5+x^2+y^3+z^4)
 
   putStrLn "factory test"
 
+{-
   setCharacteristic1 32003     -- 19 
   char <- getCharacteristic 
   putStrLn $ "current characteristic = " ++ show char
+-}
 
-  test8 <- mapInto test8
+{-}
+  let [x,y,z] = vars
+
+  x2 <- varPowCF x 2
+  let x2plus1 = x2 + 1
+
+  sqrtMinus1 <- newRootOf x2plus1
+  printCF =<< getMinimalPoly sqrtMinus1 z
+  
+  tmp <- varCF sqrtMinus1
+  let what = (tmp + x2)^3 
+  -}
+  
   let what = test8
 
+  print =<< isInExtension what
+   
   putStrLn "\ninput:"
   printCF what
-
+  
   putStrLn "\nfactors:"
   facs <- factorize what
   forM facs $ \(fac,expo) -> do
@@ -100,6 +118,12 @@ maxCharacteristic = 536870909     -- 2^29-3
 --------------------------------------------------------------------------------
 -- * Basic operations and instances
 
+eqCF :: CF -> CF -> Bool
+eqCF x y = Unsafe.unsafePerformIO (isEqualIO x y)
+
+{- there is already an instance... -}
+-- instance Eq CF where (==) = eqCF
+
 instance Num CF where
   fromInteger n = Unsafe.unsafePerformIO $ newSmallConstCF $ fromIntegral n     -- BIG INTS ARE NOT HANDLED!!!
   (+) x y = Unsafe.unsafePerformIO (plusIO  x y)
@@ -108,14 +132,23 @@ instance Num CF where
   abs    = error "CF: Num/abs is not implemented"
   signum = error "CF: Num/signum is not implemented"
 
-eqCF :: CF -> CF -> Bool
-eqCF x y = Unsafe.unsafePerformIO (isEqualIO x y)
+powCF :: CF -> Int -> CF
+powCF x n = Unsafe.unsafePerformIO (powIO x n)
 
-{- there is already an instance... -}
--- instance Eq CF where (==) = eqCF
+modCF :: CF -> CF -> CF
+modCF x y = Unsafe.unsafePerformIO (modIO x y)
 
-substitute :: Var -> CF -> (CF -> CF)
-substitute var what cf = Unsafe.unsafePerformIO (substituteIO var what cf)
+divCF :: CF -> CF -> CF
+divCF x y = Unsafe.unsafePerformIO (divIO x y)
+
+substituteCF :: Var -> CF -> (CF -> CF)
+substituteCF var what cf = Unsafe.unsafePerformIO (substituteIO var what cf)
+
+gcdPolyCF :: CF -> CF -> CF
+gcdPolyCF x y = Unsafe.unsafePerformIO (gcdPolyIO x y)
+
+reduceCF :: CF -> CF -> CF
+reduceCF x y = Unsafe.unsafePerformIO (reduceIO x y)
 
 printCF :: CF -> IO ()
 printCF cf = do
@@ -316,25 +349,4 @@ data BaseDomain c => Trie c (n :: Nat) where
   Poly :: KnownNat n => IntMap (Trie c n) -> Trie c (n + 1)
 
 --------------------------------------------------------------------------------
--- * low level
-
-newtype Level 
-  = Level Int 
-  deriving (Eq,Ord,Show)
-
--- | Haskell data type roughly corresponding to CanonicalForm 
-data Value
-  = ValZ  !Integer
-  | ValQ  !Rational
-  | ValGF !Int
-  | ValPoly !Level !(Array Int CF)
-  deriving (Eq,Ord,Show)
-
-data CanonicalForm
-
-type CF = ForeignPtr CanonicalForm
-
-marshalFromCPP :: CF -> IO Value
-
-marshalToCPP   :: Value -> IO CF
 -}

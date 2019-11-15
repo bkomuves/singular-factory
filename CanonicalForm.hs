@@ -18,6 +18,7 @@ import Numeric.GMP.Types
 import qualified Numeric.GMP.Utils as GMP 
 
 --------------------------------------------------------------------------------
+-- * types
 
 data Variable
 data CanonicalForm
@@ -28,6 +29,14 @@ type Var     = ForeignPtr Variable
 type CF      = ForeignPtr CanonicalForm
 type Fac     = ForeignPtr Factor
 type FacList = ForeignPtr FactorList
+
+--------------------------------------------------------------------------------
+-- * constants
+
+foreign import ccall "level_trans" c_level_trans :: CInt  
+foreign import ccall "level_base"  c_level_base  :: CInt  
+foreign import ccall "level_quot"  c_level_quot  :: CInt  
+foreign import ccall "level_expr"  c_level_expr  :: CInt  
 
 --------------------------------------------------------------------------------
 -- * memory management
@@ -60,9 +69,33 @@ makeFacList = newForeignPtr faclistFinalizerPtr
 -- * variables
 
 foreign import ccall "new_var" c_new_var :: CInt -> IO (Ptr Variable)
+foreign import ccall "root_of" c_root_of :: Ptr CanonicalForm -> IO (Ptr Variable)
 
 newVar :: Int -> IO Var
 newVar level = makeVar =<< c_new_var (fromIntegral level)
+
+newTransVar :: IO Var
+newTransVar = makeVar =<< c_new_var (c_level_trans)
+
+newRootOf :: CF -> IO Var
+newRootOf cf = withForeignPtr cf $ \ptr -> makeVar =<< c_root_of ptr
+
+foreign import ccall "has_mipo" c_has_mipo :: Ptr Variable -> IO CInt
+foreign import ccall "get_mipo" c_get_mipo :: Ptr Variable -> Ptr Variable -> IO (Ptr CanonicalForm)
+foreign import ccall "set_mipo" c_set_mipo :: Ptr Variable -> Ptr CanonicalForm -> IO ()
+foreign import ccall "set_reduce" c_set_reduce :: Ptr Variable -> CInt -> IO ()
+
+hasMinimalPoly :: Var -> IO Bool
+hasMinimalPoly var = withForeignPtr var $ \ptr -> liftBool (c_has_mipo ptr)
+
+getMinimalPoly  :: Var -> Var -> IO CF
+getMinimalPoly var1 var2 = 
+  withForeignPtr var1 $ \ptr1 -> 
+    withForeignPtr var2 $ \ptr2 -> 
+      makeCF =<< c_get_mipo ptr1 ptr2
+
+setReduceFlag :: Var -> Bool -> IO ()
+setReduceFlag var flag = withForeignPtr var $ \ptr -> c_set_reduce ptr (if flag then 1 else 0)
 
 --------------------------------------------------------------------------------
 -- * factors
@@ -181,6 +214,8 @@ isInFF cf = withForeignPtr cf $ \ptr -> liftBool (c_in_FF ptr)
 foreign import ccall "in_BaseDomain"  c_in_BaseDomain  :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "in_CoeffDomain" c_in_CoeffDomain :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "in_PolyDomain"  c_in_PolyDomain  :: Ptr CanonicalForm -> IO CInt
+foreign import ccall "in_Extension"   c_in_Extension   :: Ptr CanonicalForm -> IO CInt
+foreign import ccall "in_QuotDomain"  c_in_QuotDomain  :: Ptr CanonicalForm -> IO CInt
 
 isInBaseDomain :: CF -> IO Bool
 isInBaseDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_BaseDomain ptr)
@@ -190,6 +225,12 @@ isInCoeffDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_CoeffDomain ptr)
 
 isInPolyDomain :: CF -> IO Bool
 isInPolyDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_PolyDomain ptr)
+
+isInExtension :: CF -> IO Bool
+isInExtension cf = withForeignPtr cf $ \ptr -> liftBool (c_in_Extension ptr)
+
+isInQuotDomain :: CF -> IO Bool
+isInQuotDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_QuotDomain ptr)
 
 --------------------------------------------------------------------------------
 -- * basic properties
@@ -246,23 +287,44 @@ substituteIO var what cf =
 --------------------------------------------------------------------------------
 -- * Binary operations
 
-foreign import ccall "plus"  c_plus  :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
-foreign import ccall "minus" c_minus :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
-foreign import ccall "times" c_times :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
-
 foreign import ccall "is_equal" c_is_equal :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO CInt
-
-plusIO :: CF -> CF -> IO CF
-plusIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_plus p q)
-
-minusIO :: CF -> CF -> IO CF
-minusIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_minus p q)
-
-timesIO :: CF -> CF -> IO CF
-timesIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_times p q)
 
 isEqualIO :: CF -> CF -> IO Bool
 isEqualIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> liftBool (c_is_equal p q)
+
+foreign import ccall "plus_cf"  c_plus_cf  :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
+foreign import ccall "minus_cf" c_minus_cf :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
+foreign import ccall "times_cf" c_times_cf :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
+foreign import ccall "pow_cf"   c_pow_cf   :: Ptr CanonicalForm -> CInt              -> IO (Ptr CanonicalForm)
+foreign import ccall "div_cf"   c_div_cf   :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
+foreign import ccall "mod_cf"   c_mod_cf   :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
+
+foreign import ccall "gcd_poly_cf" c_gcd_poly_cf   :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
+foreign import ccall "reduce_cf"   c_reduce_cf     :: Ptr CanonicalForm -> Ptr CanonicalForm -> IO (Ptr CanonicalForm)
+
+plusIO :: CF -> CF -> IO CF
+plusIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_plus_cf p q)
+
+minusIO :: CF -> CF -> IO CF
+minusIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_minus_cf p q)
+
+timesIO :: CF -> CF -> IO CF
+timesIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_times_cf p q)
+
+powIO :: CF -> Int -> IO CF
+powIO x n = withForeignPtr x $ \p -> makeCF =<< (c_pow_cf p $ fromIntegral n)
+
+divIO :: CF -> CF -> IO CF
+divIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_div_cf p q)
+
+modIO :: CF -> CF -> IO CF
+modIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_mod_cf p q)
+
+gcdPolyIO :: CF -> CF -> IO CF
+gcdPolyIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_gcd_poly_cf p q)
+
+reduceIO :: CF -> CF -> IO CF
+reduceIO x y = withForeignPtr x $ \p -> withForeignPtr y $ \q -> makeCF =<< (c_reduce_cf p q)
 
 --------------------------------------------------------------------------------
 -- * GMP compatibility layer
