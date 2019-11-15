@@ -28,7 +28,7 @@ Library
                        GFTables
                        Factory
                        Domains
-                       -- Polynomial
+                       Polynomial
                        Parser
                        DList
                            

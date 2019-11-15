@@ -17,7 +17,7 @@
   #-}
 module Domains where
 
-------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 import Data.Ratio
 
@@ -33,7 +33,7 @@ import CanonicalForm
 import Factory hiding ( FF , GF )
 import GFTables ( tryAndInitGFTables , initGFTables )
 
-------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 domains_main = do
   tryAndInitGFTables
@@ -49,7 +49,8 @@ domains_main = do
       ra3 = 1/a3
   
   print (one,a,a2,a3,ra3,a3*ra3)
-------------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
 -- * The global characteristics
 
 type Prime = Int
@@ -74,7 +75,7 @@ setFactoryChar new = do
       CharFp p   -> setCharacteristic1 p
       CharGF p n -> setCharacteristic3 p n '@'      -- we use '@' for the Galois field variable for now
       
-------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- * Prime fields
 
 -- | Haskell prime fields
@@ -107,7 +108,7 @@ instance KnownNat p => Num (Fp p) where
 fpToFF :: KnownNat p => Fp p -> FF p
 fpToFF (Fp k) = mkFF k
 
-------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- * Finite fields
 
 -- | Factory prime fields
@@ -145,7 +146,7 @@ instance (KnownNat p) => Fractional (FF p) where
   fromRational q  = mkFF (numerator q) / mkFF (denominator q)
   (FF a) / (FF b) = FF (divCF a b)
   
-------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- * Galois fields
 
 -- | Galois fields @GF(p^n)@. 
@@ -215,10 +216,10 @@ gfSymbol = symbolVal . proxyX where
   proxyX _ = Proxy
 
   
-------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 -- * Base domains
 
-class (Eq a) => BaseDomain a where
+class (Eq a, Show a, Num a) => BaseDomain a where
   characteristic    :: Proxy a -> Int
   charExponent      :: Proxy a -> Int 
   baseDomainName    :: Proxy a -> String
@@ -263,7 +264,7 @@ instance (KnownNat q, KnownNat n, KnownSymbol x) => BaseDomain (GF q n x) where
   factoryChar    pxy  = CharGF (characteristic pxy) (charExponent pxy)
   baseToCF   (GF cf)  = cf
 
-------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 mkProxy :: a -> Proxy a
 mkProxy _ = Proxy
@@ -271,4 +272,4 @@ mkProxy _ = Proxy
 proxyUndef :: Proxy a -> a
 proxyUndef _ = undefined
 
-------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------

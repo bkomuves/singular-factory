@@ -175,6 +175,20 @@ data Expr
   | PowE Expr !Int
   deriving (Eq,Ord,Show)
 
+evalSign :: Num c => Sign -> c -> c
+evalSign Plus  = id
+evalSign Minus = negate
+ 
+evalExpr :: Num c => (Var -> c) -> Expr -> c
+evalExpr evalVar = go where
+  go expr = case expr of
+    VarE v   -> evalVar v
+    KstE k   -> fromInteger k
+    NegE e   -> negate (go e)
+    LinE xs  -> sum [ evalSign pm (go x) | (pm,x) <- xs ]
+    MulE xs  -> product (map go xs)
+    PowE e k -> (go e)^k
+    
 --------------------------------------------------------------------------------
 
 {-

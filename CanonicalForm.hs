@@ -160,11 +160,11 @@ unpackFactorList faclist = mapM unpackFactor =<< flattenFactorList faclist
 
 foreign import ccall "my_factorize" c_factorize :: Ptr CanonicalForm -> Ptr FactorList
 
-factorize' :: CF -> IO FacList
-factorize' cf = withForeignPtr cf $ \ptr -> makeFacList (c_factorize ptr)
+factorizeIO' :: CF -> IO FacList
+factorizeIO' cf = withForeignPtr cf $ \ptr -> makeFacList (c_factorize ptr)
 
-factorize :: CF -> IO [(CF,Int)]
-factorize cf = unpackFactorList =<< factorize' cf
+factorizeIO :: CF -> IO [(CF,Int)]
+factorizeIO cf = unpackFactorList =<< factorizeIO' cf
 
 --------------------------------------------------------------------------------
 -- * basic CFs
@@ -182,11 +182,11 @@ newSmallConstCF k = makeCF =<< c_const_cf (fromIntegral k)
 foreign import ccall "var_cf"     c_var_cf     :: Ptr Variable ->        IO (Ptr CanonicalForm)
 foreign import ccall "var_pow_cf" c_var_pow_cf :: Ptr Variable -> Int -> IO (Ptr CanonicalForm)
 
-varCF :: Var -> IO CF
-varCF var = withForeignPtr var $ \vptr -> makeCF =<< c_var_cf vptr
+varIO :: Var -> IO CF
+varIO var = withForeignPtr var $ \vptr -> makeCF =<< c_var_cf vptr
 
-varPowCF :: Var -> Int -> IO CF
-varPowCF var expo = withForeignPtr var $ \vptr -> makeCF =<< c_var_pow_cf vptr expo
+varPowIO :: Var -> Int -> IO CF
+varPowIO var expo = withForeignPtr var $ \vptr -> makeCF =<< c_var_pow_cf vptr expo
 
 --------------------------------------------------------------------------------
 -- * basic CF predicates

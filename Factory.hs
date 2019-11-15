@@ -31,12 +31,12 @@ import GFTables
 
 pk :: [Var] -> Int -> CF
 pk vars k = Unsafe.unsafePerformIO $ do
-  terms <- sequence [ varPowCF v k | v <- vars ]
+  terms <- sequence [ varPowIO v k | v <- vars ]
   return $ foldl1' (+) (1 : terms)
 
 pkn :: [Var] -> Int -> CF
 pkn vars k = Unsafe.unsafePerformIO $ do
-  terms <- sequence [ varPowCF v k | v <- vars ]
+  terms <- sequence [ varPowIO v k | v <- vars ]
   return $ 1 - foldl1' (+) terms
 
 factory_main = do
@@ -57,7 +57,7 @@ factory_main = do
 -}
 
   vars@[xv,yv,zv] <- mapM newVarL [1..3]
-  [x,y,z] <- mapM varCF vars
+  let [x,y,z] = map varCF vars
   let p1 = pk vars 1
       p2 = pk vars 2
       p3 = pk vars 3
@@ -80,18 +80,6 @@ factory_main = do
   putStrLn $ "current characteristic = " ++ show char
 -}
 
-{-}
-  let [x,y,z] = vars
-
-  x2 <- varPowCF x 2
-  let x2plus1 = x2 + 1
-
-  sqrtMinus1 <- newRootOf x2plus1
-  printCF =<< getMinimalPoly sqrtMinus1 z
-  
-  tmp <- varCF sqrtMinus1
-  let what = (tmp + x2)^3 
-  -}
   
   let what = test8
 
@@ -101,7 +89,7 @@ factory_main = do
   printCF what
   
   putStrLn "\nfactors:"
-  facs <- factorize what
+  facs <- factorizeIO what
   forM facs $ \(fac,expo) -> do
     putStr $ "expo = " ++ show expo ++ " | " 
     printCF fac
@@ -124,6 +112,12 @@ eqCF x y = Unsafe.unsafePerformIO (isEqualIO x y)
 
 {- there is already an instance... -}
 -- instance Eq CF where (==) = eqCF
+
+varCF :: Var -> CF
+varCF var = Unsafe.unsafePerformIO (varIO var)
+
+varPowCF :: Var -> Int -> CF
+varPowCF var expo = Unsafe.unsafePerformIO (varPowIO var expo)
 
 instance Num CF where
   fromInteger n = Unsafe.unsafePerformIO $ newSmallConstCF $ fromIntegral n     -- BIG INTS ARE NOT HANDLED!!!
@@ -151,8 +145,17 @@ gcdPolyCF x y = Unsafe.unsafePerformIO (gcdPolyIO x y)
 reduceCF :: CF -> CF -> CF
 reduceCF x y = Unsafe.unsafePerformIO (reduceIO x y)
 
+factorizeCF :: CF -> [(CF,Int)]
+factorizeCF x = Unsafe.unsafePerformIO (factorizeIO x)
+
+--------------------------------------------------------------------------------
+-- * pretty printing
+
 showCF :: CF -> String
 showCF x = Unsafe.unsafePerformIO (showIO x)
+
+showCF_with :: (Int -> String) -> CF -> String
+showCF_with showVar x = Unsafe.unsafePerformIO (showIO_with showVar x)
 
 showCF_dense :: CF -> String
 showCF_dense x = Unsafe.unsafePerformIO (showIO_dense x)
@@ -164,6 +167,11 @@ showIO :: CF -> IO String
 showIO cf = do
   terms <- genericMarshalFromCF makeTerm cf
   return $ intercalate " + " (map prettyTerm terms)
+
+showIO_with :: (Int -> String) -> CF -> IO String
+showIO_with showVar cf = do
+  terms <- genericMarshalFromCF makeTerm cf
+  return $ intercalate " + " (map (prettyTermWith showVar) terms)
 
 showIO_dense :: CF -> IO String
 showIO_dense cf = do
@@ -244,12 +252,15 @@ monomIsNull :: Monom -> Bool
 monomIsNull (Monom list) = null list
 
 prettyMonom :: Monom -> String
-prettyMonom (Monom [] ) = "1" -- "(1)"
-prettyMonom (Monom ves) = intercalate "*" (map f ves) where
-  f (v,0) = ""
-  f (v,1) = g v
-  f (v,k) = g v ++ "^" ++ show k  
+prettyMonom = prettyMonomWith g where
   g level = [chr (96 + level)]
+
+prettyMonomWith :: (Int -> String) -> Monom -> String
+prettyMonomWith showVar (Monom [] ) = "1" -- "(1)"
+prettyMonomWith showVar (Monom ves) = intercalate "*" (map f ves) where
+  f (v,0) = "1"
+  f (v,1) = showVar v
+  f (v,k) = showVar v ++ "^" ++ show k  
 
 ----------------------------------------
 -- * coefficients
@@ -273,6 +284,12 @@ prettyTerm (Term coeff monom)
   | coeffIsOne  coeff  = prettyMonom monom
   | monomIsNull monom  = prettyCoeff coeff
   | otherwise          = prettyCoeff coeff ++ "*" ++ prettyMonom monom
+
+prettyTermWith :: (Int -> String) -> Term -> String
+prettyTermWith showVar (Term coeff monom) 
+  | coeffIsOne  coeff  = prettyMonomWith showVar monom
+  | monomIsNull monom  = prettyCoeff coeff
+  | otherwise          = prettyCoeff coeff ++ "*" ++ prettyMonomWith showVar monom
 
 --------------------------------------------------------------------------------
 -- * Marshalling from CF
