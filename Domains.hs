@@ -19,6 +19,8 @@ module Domains where
 
 ------------------------------------------------------------------------------------------
 
+import Data.Ratio
+
 import GHC.TypeLits
 import Data.Proxy
 import Data.IORef
@@ -40,6 +42,13 @@ domains_main = do
   print $ [ mkGF i :: GF 5 2 "x"    | i<-[0..30] ]
   print $ [ genPowGF i :: GF 5 2 "x"    | i<-[0..30] ]
   
+  let one = mkGF 1  :: GF 19 3 "y" 
+      a   = genGF   :: GF 19 3 "y"
+      a2  = a*a
+      a3  = a*a*a
+      ra3 = 1/a3
+  
+  print (one,a,a2,a3,ra3,a3*ra3)
 ------------------------------------------------------------------------------------------
 -- * The global characteristics
 
@@ -122,6 +131,19 @@ ffPrime :: KnownNat p => FF p -> Int
 ffPrime = fromIntegral . natVal . proxyP where
   proxyP :: FF p -> Proxy p
   proxyP _ = Proxy
+
+instance KnownNat p => Num (FF p) where
+  fromInteger     = mkFF
+  negate (FF a)   = FF (negate a)
+  (FF a) + (FF b) = FF (a + b)
+  (FF a) - (FF b) = FF (a - b)
+  (FF a) * (FF b) = FF (a * b)
+  abs    = id
+  signum = const 1
+
+instance (KnownNat p) => Fractional (FF p) where
+  fromRational q  = mkFF (numerator q) / mkFF (denominator q)
+  (FF a) / (FF b) = FF (divCF a b)
   
 ------------------------------------------------------------------------------------------
 -- * Galois fields
@@ -163,6 +185,19 @@ instance Eq (GF p n x) where
 
 instance (KnownNat p, KnownNat n, KnownSymbol x) => Show (GF p n x) where 
   show gf@(GF cf) = showGFValue1 (gfSymbol gf) (valueGF cf)
+
+instance (KnownNat p, KnownNat n, KnownSymbol x) => Num (GF p n x) where
+  fromInteger     = mkGF
+  negate (GF a)   = GF (negate a)
+  (GF a) + (GF b) = GF (a + b)
+  (GF a) - (GF b) = GF (a - b)
+  (GF a) * (GF b) = GF (a * b)
+  abs    = id
+  signum = const 1
+  
+instance (KnownNat p, KnownNat n, KnownSymbol x) => Fractional (GF p n x) where
+  fromRational q  = mkGF (numerator q) / mkGF (denominator q)
+  (GF a) / (GF b) = GF (divCF a b)
 
 gfPrime :: KnownNat p => GF p n x -> Int
 gfPrime = fromIntegral . natVal . proxyP where
