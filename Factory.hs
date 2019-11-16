@@ -83,7 +83,7 @@ factory_main = do
   
   let what = test8
 
-  print =<< isInExtension what
+  print =<< isInExtensionIO what
    
   putStrLn "\ninput:"
   printCF what
@@ -113,6 +113,12 @@ eqCF x y = Unsafe.unsafePerformIO (isEqualIO x y)
 {- there is already an instance... -}
 -- instance Eq CF where (==) = eqCF
 
+isZeroCF :: CF -> Bool
+isZeroCF cf = Unsafe.unsafePerformIO (isZeroIO cf)
+
+isOneCF :: CF -> Bool
+isOneCF cf = Unsafe.unsafePerformIO (isOneIO cf)
+ 
 varCF :: Var -> CF
 varCF var = Unsafe.unsafePerformIO (varIO var)
 
@@ -295,15 +301,15 @@ prettyTermWith showVar (Term coeff monom)
 -- * Marshalling from CF
 
 getZZ :: CF -> IO (Maybe Integer)
-getZZ cf = isInZZ cf >>= \b -> case b of
+getZZ cf = isInZZ_IO cf >>= \b -> case b of
   False -> return Nothing
-  True  -> isImmediate cf >>= \b -> case b of
+  True  -> isImmediateIO cf >>= \b -> case b of
     True  -> (Just . fromIntegral) <$> getSmallIntValue cf
     False -> Just <$> getGmpNumerator cf
       -- error "getZZ: bignums are not implemented yet"
 
 getQQ :: CF -> IO (Maybe Rational)
-getQQ cf = isInQQ cf >>= \b -> case b of
+getQQ cf = isInQQ_IO cf >>= \b -> case b of
   False -> return Nothing
   True  -> do
     -- Just numer <- (getZZ =<< getNumer cf)
@@ -313,16 +319,16 @@ getQQ cf = isInQQ cf >>= \b -> case b of
     return $ Just $ (numer % denom)
 
 getFF :: CF -> IO (Maybe Int)
-getFF cf = isInFF cf >>= \b -> case b of
+getFF cf = isInFF_IO cf >>= \b -> case b of
   False -> return Nothing
-  True  -> isImmediate cf >>= \b -> case b of
+  True  -> isImmediateIO cf >>= \b -> case b of
     True  -> (Just . fromIntegral) <$> getSmallIntValue cf
     False -> error "getFF: bignums are not implemented yet"
 
 getGF :: CF -> IO (Maybe GFValue)
-getGF cf = isInGF cf >>= \b -> case b of
+getGF cf = isInGF_IO cf >>= \b -> case b of
   False -> return Nothing
-  True  -> isFFinGF cf >>= \b -> case b of
+  True  -> isFFinGF_IO cf >>= \b -> case b of
     True  -> do 
       k <- getSmallIntValue cf 
       e <- getGFValue cf
@@ -332,7 +338,7 @@ getGF cf = isInGF cf >>= \b -> case b of
       return $ Just $ GFGenPow e
       
 getBaseValue :: CF -> IO (Maybe BaseValue)
-getBaseValue cf = isInBaseDomain cf >>= \b -> case b of
+getBaseValue cf = isInBaseDomainIO cf >>= \b -> case b of
   False -> return Nothing
   True  -> getBaseValueNotGF cf >>= \mb -> case mb of
     Just val -> return $ Just val
@@ -341,7 +347,7 @@ getBaseValue cf = isInBaseDomain cf >>= \b -> case b of
       Nothing  -> return Nothing
 
 getBaseValueNotGF :: CF -> IO (Maybe BaseValue)
-getBaseValueNotGF cf = isInBaseDomain cf >>= \b -> case b of
+getBaseValueNotGF cf = isInBaseDomainIO cf >>= \b -> case b of
   False -> return Nothing
   True  -> getZZ cf >>= \mb -> case mb of
     Just n  -> return $ Just (ZZ n)
@@ -351,6 +357,23 @@ getBaseValueNotGF cf = isInBaseDomain cf >>= \b -> case b of
         Just k  -> return $ Just (FF k)
         Nothing -> return Nothing
           
+--------------------------------------------------------------------------------
+
+isInBaseDomainCF :: CF -> Bool
+isInBaseDomainCF cf = Unsafe.unsafePerformIO (isInBaseDomainIO cf)
+
+isInCoeffDomainCF :: CF -> Bool
+isInCoeffDomainCF cf = Unsafe.unsafePerformIO (isInCoeffDomainIO cf)
+
+isInPolyDomainCF :: CF -> Bool
+isInPolyDomainCF cf = Unsafe.unsafePerformIO (isInPolyDomainIO cf)
+
+isInQuotDomainCF :: CF -> Bool
+isInQuotDomainCF cf = Unsafe.unsafePerformIO (isInQuotDomainIO cf)
+
+isInExtensionCF :: CF -> Bool
+isInExtensionCF cf = Unsafe.unsafePerformIO (isInExtensionIO cf)
+
 --------------------------------------------------------------------------------
 
 valueZZ :: CF -> Integer
@@ -396,7 +419,7 @@ genericMarshalFromCF_dlist user = worker [] where
         deg   <- getDegree cf
         stuff <- forM [0..deg] $ \d -> do
           this <- getCfAtIndex cf d
-          isZero this >>= \b -> if b
+          isZeroIO this >>= \b -> if b
             then return (DList.empty)
             else if d > 0 
               then worker ((level,d):expos) this
@@ -434,7 +457,7 @@ marshalUnivariateFromCF = worker where
         -- level <- getLevel  cf
         mbs <- forM [0..deg] $ \d -> do
           this <- getCfAtIndex cf d
-          isZero this >>= \b -> if b
+          isZeroIO this >>= \b -> if b
             then return $ Nothing
             else return $ Just (this,d)
         return $ catMaybes mbs

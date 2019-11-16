@@ -79,7 +79,9 @@ setFactoryChar new = do
 -- * Prime fields
 
 -- | Haskell prime fields
-newtype Fp (p :: Nat) = Fp Int deriving (Eq)
+newtype Fp (p :: Nat) 
+  = Fp Int 
+  deriving (Eq)
   
 fpPrime :: KnownNat p => Fp p -> Int
 fpPrime = fromIntegral . natVal . proxyP where
@@ -225,6 +227,7 @@ class (Eq a, Show a, Num a) => BaseDomain a where
   baseDomainName    :: Proxy a -> String
   factoryChar       :: Proxy a -> FactoryChar
   baseToCF          :: a -> CF
+  unsafeCfToBase    :: CF -> a
   
 setBaseDomain :: BaseDomain a => Proxy a -> IO ()
 setBaseDomain = setFactoryChar . factoryChar  
@@ -235,13 +238,15 @@ instance BaseDomain Integer where
   baseDomainName _    = "ZZ"
   factoryChar    _    = CharZero
   baseToCF       x    = Unsafe.unsafePerformIO (makeIntegerCF x)
-  
+  unsafeCfToBase      = valueZZ
+    
 instance BaseDomain Rational where
   characteristic _    = 0
   charExponent   _    = 1
   baseDomainName _    = "QQ"
   factoryChar     _   = CharZero
   baseToCF       x    = Unsafe.unsafePerformIO (makeRationalCF x)
+  unsafeCfToBase      = valueQQ
 
 instance KnownNat p => BaseDomain (Fp p) where
   characteristic pxy  = (fpPrime $ proxyUndef pxy)
@@ -249,13 +254,15 @@ instance KnownNat p => BaseDomain (Fp p) where
   baseDomainName pxy  = "F_" ++ show (characteristic pxy) 
   factoryChar    pxy  = CharFp (characteristic pxy)
   baseToCF       x    = baseToCF (fpToFF x)
-
+  unsafeCfToBase cf   = Fp (valueFF cf)
+  
 instance KnownNat p => BaseDomain (FF p) where
   characteristic pxy  = (ffPrime $ proxyUndef pxy)
   charExponent   pxy  = 1
   baseDomainName pxy  = "FF(" ++ show (characteristic pxy) ++ ")" where
   factoryChar    pxy  = CharFp (characteristic pxy) 
   baseToCF   (FF cf)  = cf
+  unsafeCfToBase      = FF
     
 instance (KnownNat q, KnownNat n, KnownSymbol x) => BaseDomain (GF q n x) where
   characteristic pxy  = (gfPrime    $ proxyUndef pxy)
@@ -263,6 +270,7 @@ instance (KnownNat q, KnownNat n, KnownSymbol x) => BaseDomain (GF q n x) where
   baseDomainName pxy  = "GF(" ++ show (characteristic pxy) ++ ")" where
   factoryChar    pxy  = CharGF (characteristic pxy) (charExponent pxy)
   baseToCF   (GF cf)  = cf
+  unsafeCfToBase      = GF
 
 --------------------------------------------------------------------------------
 

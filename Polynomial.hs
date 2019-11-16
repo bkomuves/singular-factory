@@ -65,11 +65,15 @@ theFactoryVars :: [Var]
 theFactoryVars = map mk [1..] where
   mk i = Unsafe.unsafePerformIO $ newVarL i
 
+theNthVar :: VarIdx -> Var
+theNthVar idx = theFactoryVars !! (idx-1)
+
 --------------------------------------------------------------------------------
 -- * Polynomials
 
 -- | A multivariate polynomial over a base domain
-newtype Poly varset domain  = Poly CF
+newtype Poly varset domain 
+  = Poly { unPoly :: CF }
 
 instance Eq (Poly vars domain) where
   (==) (Poly cf1) (Poly cf2) = cf1 == cf2
@@ -77,6 +81,33 @@ instance Eq (Poly vars domain) where
 instance Show (Poly vars domain) where
   show (Poly cf) = showCF cf
   
+polyIsZero :: Poly vars domain -> Bool
+polyIsZero (Poly cf) = isZeroCF cf
+
+polyIsOne :: Poly vars domain -> Bool
+polyIsOne (Poly cf) = isOneCF cf
+
+-- | Returns true if the polynomial is a constant  
+inBaseDomain :: Poly vars domain -> Bool
+inBaseDomain (Poly cf) = isInBaseDomainCF cf
+
+-- | If it is a constant, returns the value
+mbConstant :: BaseDomain domain => Poly vars domain -> Maybe domain
+mbConstant (Poly cf) = if isInBaseDomainCF cf 
+  then Just (unsafeCfToBase cf)
+  else Nothing
+
+-- | A variable as a polynomial
+var :: VarIdx -> Poly vars domain
+var idx = Poly $ varCF (theNthVar idx)
+
+-- | A power of a variable
+varPow :: VarIdx -> Int -> Poly vars domain
+varPow idx expo = Poly $ varPowCF (theNthVar idx) expo 
+
+--------------------------------------------------------------------------------
+-- * Operations on polynomials
+
 instance forall vars domain. BaseDomain domain => Num (Poly vars domain) where
   fromInteger = Poly . (baseToCF :: domain -> CF) . fromInteger
   negate (Poly cf) = Poly (negate cf)
@@ -86,14 +117,6 @@ instance forall vars domain. BaseDomain domain => Num (Poly vars domain) where
   abs    = id
   signum = const 1
   
--- | A variable
-var :: VarIdx -> Poly vars domain
-var idx = Poly $ varCF (theFactoryVars !! (idx-1)) 
-
--- | A power of a variable
-varPow :: VarIdx -> Int -> Poly vars domain
-varPow idx expo = Poly $ varPowCF (theFactoryVars !! (idx-1)) expo 
-
 pow :: BaseDomain domain => Poly vars domain -> Int -> Poly vars domain
 pow (Poly cf) expo = Poly $ powCF cf expo
 
@@ -105,10 +128,23 @@ polyGCD (Poly cf1) (Poly cf2) = Poly $ gcdPolyCF cf1 cf2
 polyReduce :: BaseDomain domain => Poly vars domain -> Poly vars domain -> Poly vars domain 
 polyReduce (Poly cf1) (Poly cf2) = Poly $ reduceCF cf1 cf2
 
+-- | Polynomial factorization
 factorize :: BaseDomain domain => Poly vars domain -> [(Poly vars domain, Int)]
 factorize (Poly cf) = map f (factorizeCF cf) where
   f (p, expo) = (Poly p, expo)
 
+-- | Substitution
+substitute1 :: BaseDomain domain => VarIdx -> Poly vars domain -> Poly vars domain -> Poly vars domain
+substitute1 idx (Poly what) (Poly cf) = Poly (substituteCF (theNthVar idx) what cf)
+
+-- | Evaluate a polynomial at the given point
+evaluate :: BaseDomain domain => (VarIdx -> domain) -> Poly vars domain -> domain
+evaluate fun (Poly cf0) = unsafeCfToBase (go 1 cf0) where
+  go :: Int -> CF -> CF
+  go !idx !cf = if isInBaseDomainCF cf
+    then cf
+    else go (idx+1) (substituteCF (theNthVar idx) (baseToCF $ fun idx) cf)
+    
 --------------------------------------------------------------------------------
 -- * Standard naming conventions of variables
 

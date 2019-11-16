@@ -197,37 +197,37 @@ liftBool action = action >>= \k -> return (k/=0)
 foreign import ccall "is_zero" c_is_zero :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "is_one"  c_is_one  :: Ptr CanonicalForm -> IO CInt
 
-isZero :: CF -> IO Bool
-isZero cf = withForeignPtr cf $ \ptr -> liftBool (c_is_zero ptr)
+isZeroIO :: CF -> IO Bool
+isZeroIO cf = withForeignPtr cf $ \ptr -> liftBool (c_is_zero ptr)
 
-isOne :: CF -> IO Bool
-isOne cf = withForeignPtr cf $ \ptr -> liftBool (c_is_one ptr)
+isOneIO :: CF -> IO Bool
+isOneIO cf = withForeignPtr cf $ \ptr -> liftBool (c_is_one ptr)
 
 foreign import ccall "is_imm"        c_is_imm        :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "is_univariate" c_is_univariate :: Ptr CanonicalForm -> IO CInt
 
-isImmediate :: CF -> IO Bool
-isImmediate cf = withForeignPtr cf $ \ptr -> liftBool (c_is_imm ptr)
+isImmediateIO :: CF -> IO Bool
+isImmediateIO cf = withForeignPtr cf $ \ptr -> liftBool (c_is_imm ptr)
 
-isUnivariate :: CF -> IO Bool
-isUnivariate cf = withForeignPtr cf $ \ptr -> liftBool (c_is_univariate ptr)
+isUnivariateIO :: CF -> IO Bool
+isUnivariateIO cf = withForeignPtr cf $ \ptr -> liftBool (c_is_univariate ptr)
 
 foreign import ccall "in_ZZ" c_in_ZZ :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "in_QQ" c_in_QQ :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "in_GF" c_in_GF :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "in_FF" c_in_FF :: Ptr CanonicalForm -> IO CInt
 
-isInZZ :: CF -> IO Bool
-isInZZ cf = withForeignPtr cf $ \ptr -> liftBool (c_in_ZZ ptr)
+isInZZ_IO :: CF -> IO Bool
+isInZZ_IO cf = withForeignPtr cf $ \ptr -> liftBool (c_in_ZZ ptr)
 
-isInQQ :: CF -> IO Bool
-isInQQ cf = withForeignPtr cf $ \ptr -> liftBool (c_in_QQ ptr)
+isInQQ_IO :: CF -> IO Bool
+isInQQ_IO cf = withForeignPtr cf $ \ptr -> liftBool (c_in_QQ ptr)
 
-isInGF :: CF -> IO Bool
-isInGF cf = withForeignPtr cf $ \ptr -> liftBool (c_in_GF ptr)
+isInGF_IO :: CF -> IO Bool
+isInGF_IO cf = withForeignPtr cf $ \ptr -> liftBool (c_in_GF ptr)
 
-isInFF :: CF -> IO Bool
-isInFF cf = withForeignPtr cf $ \ptr -> liftBool (c_in_FF ptr)
+isInFF_IO :: CF -> IO Bool
+isInFF_IO cf = withForeignPtr cf $ \ptr -> liftBool (c_in_FF ptr)
 
 foreign import ccall "in_BaseDomain"  c_in_BaseDomain  :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "in_CoeffDomain" c_in_CoeffDomain :: Ptr CanonicalForm -> IO CInt
@@ -235,20 +235,20 @@ foreign import ccall "in_PolyDomain"  c_in_PolyDomain  :: Ptr CanonicalForm -> I
 foreign import ccall "in_Extension"   c_in_Extension   :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "in_QuotDomain"  c_in_QuotDomain  :: Ptr CanonicalForm -> IO CInt
 
-isInBaseDomain :: CF -> IO Bool
-isInBaseDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_BaseDomain ptr)
+isInBaseDomainIO :: CF -> IO Bool
+isInBaseDomainIO cf = withForeignPtr cf $ \ptr -> liftBool (c_in_BaseDomain ptr)
 
-isInCoeffDomain :: CF -> IO Bool
-isInCoeffDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_CoeffDomain ptr)
+isInCoeffDomainIO :: CF -> IO Bool
+isInCoeffDomainIO cf = withForeignPtr cf $ \ptr -> liftBool (c_in_CoeffDomain ptr)
 
-isInPolyDomain :: CF -> IO Bool
-isInPolyDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_PolyDomain ptr)
+isInPolyDomainIO :: CF -> IO Bool
+isInPolyDomainIO cf = withForeignPtr cf $ \ptr -> liftBool (c_in_PolyDomain ptr)
 
-isInExtension :: CF -> IO Bool
-isInExtension cf = withForeignPtr cf $ \ptr -> liftBool (c_in_Extension ptr)
+isInExtensionIO :: CF -> IO Bool
+isInExtensionIO cf = withForeignPtr cf $ \ptr -> liftBool (c_in_Extension ptr)
 
-isInQuotDomain :: CF -> IO Bool
-isInQuotDomain cf = withForeignPtr cf $ \ptr -> liftBool (c_in_QuotDomain ptr)
+isInQuotDomainIO :: CF -> IO Bool
+isInQuotDomainIO cf = withForeignPtr cf $ \ptr -> liftBool (c_in_QuotDomain ptr)
 
 --------------------------------------------------------------------------------
 -- * basic properties
@@ -415,8 +415,8 @@ getGFValue :: CF -> IO Int
 getGFValue cf = withForeignPtr cf $ \ptr -> fromIntegral <$> (c_get_gf_value ptr)
 
 -- | True if element of the prime subfield
-isFFinGF :: CF -> IO Bool
-isFFinGF cf = withForeignPtr cf $ \ptr -> liftBool (c_is_FF_in_GF ptr)
+isFFinGF_IO :: CF -> IO Bool
+isFFinGF_IO cf = withForeignPtr cf $ \ptr -> liftBool (c_is_FF_in_GF ptr)
 
 -- | Returns the degree of the Galois field (degree of extension over the prime field)
 getGFDegree :: IO Int
