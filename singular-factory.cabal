@@ -29,6 +29,7 @@ Library
                        Factory
                        Domains
                        Polynomial
+                       Counting
                        Parser
                        DList
                            

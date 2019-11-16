@@ -33,6 +33,8 @@ type T = Poly V Integer -- (GF 3 2 "x") -- Integer
 poly_main = do
   tryAndInitGFTables
   
+  print ( enumerateDomain :: [Fp 7] )
+  
   let [x,y,z] = map var [1,2,3]
   let p1 = (1+x+y+z)       :: T
       p2 = (1+x*x+y*y+z*z) :: T
@@ -97,6 +99,10 @@ mbConstant (Poly cf) = if isInBaseDomainCF cf
   then Just (unsafeCfToBase cf)
   else Nothing
 
+-- | A constant polynomial
+konst :: BaseDomain domain => domain -> Poly vars domain
+konst = Poly . baseToCF
+
 -- | A variable as a polynomial
 var :: VarIdx -> Poly vars domain
 var idx = Poly $ varCF (theNthVar idx)
@@ -107,6 +113,13 @@ varPow idx expo = Poly $ varPowCF (theNthVar idx) expo
 
 --------------------------------------------------------------------------------
 -- * Operations on polynomials
+
+mapIntoDomain 
+  :: forall domain1 domain2 vars. (BaseDomain domain1, BaseDomain domain2) 
+  => Poly vars domain1 -> Poly vars domain2
+mapIntoDomain (Poly cf) = result where
+  result = Poly (mapIntoCF (factoryChar pxy) cf)
+  pxy    = Proxy :: Proxy domain2
 
 instance forall vars domain. BaseDomain domain => Num (Poly vars domain) where
   fromInteger = Poly . (baseToCF :: domain -> CF) . fromInteger

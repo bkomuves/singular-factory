@@ -295,8 +295,8 @@ getCfAtIndex :: CF -> Int -> IO CF
 getCfAtIndex cf idx = withForeignPtr cf $ \ptr -> makeCF =<< (c_index_poly ptr $ fromIntegral idx)
 
 -- | Map into the current base domain
-mapInto :: CF -> IO CF
-mapInto cf = withForeignPtr cf $ \ptr -> makeCF =<< (c_map_into ptr)
+mapIntoIO :: CF -> IO CF
+mapIntoIO cf = withForeignPtr cf $ \ptr -> makeCF =<< (c_map_into ptr)
 
 -- | Map into the current base domain
 substituteIO :: Var -> CF -> (CF -> IO CF)

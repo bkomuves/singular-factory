@@ -4,7 +4,7 @@
 -- These are the base rings and fields Factory can work with, namely:
 --
 -- * the ring integers
--- * the ring of rationals
+-- * the field of rationals
 -- * finite fields (prime fields and Galois fields)
 --
 -- Note: as Factory has the base domain as a global state, this whole library is
@@ -74,6 +74,11 @@ setFactoryChar new = do
       CharZero   -> setCharacteristic1 0           
       CharFp p   -> setCharacteristic1 p
       CharGF p n -> setCharacteristic3 p n '@'      -- we use '@' for the Galois field variable for now
+
+mapIntoCF :: FactoryChar -> CF -> CF
+mapIntoCF char cf = Unsafe.unsafePerformIO $ do
+  setFactoryChar char 
+  mapIntoIO cf
       
 --------------------------------------------------------------------------------
 -- * Prime fields
@@ -121,7 +126,7 @@ mkFF :: (KnownNat p, Integral a) => a -> FF p
 mkFF !k = ff where
   ff = Unsafe.unsafePerformIO $ do
     setBaseDomain (mkProxy ff)
-    cf <- (mapInto =<< makeIntegerCF (fromIntegral k))
+    cf <- (mapIntoIO =<< makeIntegerCF (fromIntegral k))
     return (FF cf)
     
 instance Eq (FF p) where 
@@ -156,6 +161,10 @@ instance (KnownNat p) => Fractional (FF p) where
 -- The (nonzero) elements are represented as powers of the canonical generator.
 --
 -- The symbol is the name of the canonical generator (used for pretty-printing).
+--
+-- Note: because of how Factory is implemented, it is /required/ that @n >= 2@...
+-- (use 'FF' for prime fields)
+--
 newtype GF (p :: Nat) (n :: Nat) (x :: Symbol) 
   = GF { unGF :: CF }
 
@@ -165,7 +174,7 @@ mkGF :: (KnownNat p, KnownNat n, KnownSymbol x, Integral a) => a -> GF p n x
 mkGF !k = gf where
   gf = Unsafe.unsafePerformIO $ do
     setBaseDomain (mkProxy gf)
-    cf <- (mapInto =<< makeIntegerCF (fromIntegral k))
+    cf <- (mapIntoIO =<< makeIntegerCF (fromIntegral k))
     return (GF cf)
 
 -- | The canonical generator of the (multiplicative group of the) Galois field 
@@ -228,6 +237,8 @@ class (Eq a, Show a, Num a) => BaseDomain a where
   factoryChar       :: Proxy a -> FactoryChar
   baseToCF          :: a -> CF
   unsafeCfToBase    :: CF -> a
+  isZero            :: a -> Bool
+  isOne             :: a -> Bool
   
 setBaseDomain :: BaseDomain a => Proxy a -> IO ()
 setBaseDomain = setFactoryChar . factoryChar  
@@ -239,7 +250,9 @@ instance BaseDomain Integer where
   factoryChar    _    = CharZero
   baseToCF       x    = Unsafe.unsafePerformIO (makeIntegerCF x)
   unsafeCfToBase      = valueZZ
-    
+  isZero         n    = (n == 0)
+  isOne          n    = (n == 1)
+      
 instance BaseDomain Rational where
   characteristic _    = 0
   charExponent   _    = 1
@@ -247,6 +260,8 @@ instance BaseDomain Rational where
   factoryChar     _   = CharZero
   baseToCF       x    = Unsafe.unsafePerformIO (makeRationalCF x)
   unsafeCfToBase      = valueQQ
+  isZero         q    = (q == 0)
+  isOne          q    = (q == 1)
 
 instance KnownNat p => BaseDomain (Fp p) where
   characteristic pxy  = (fpPrime $ proxyUndef pxy)
@@ -255,6 +270,8 @@ instance KnownNat p => BaseDomain (Fp p) where
   factoryChar    pxy  = CharFp (characteristic pxy)
   baseToCF       x    = baseToCF (fpToFF x)
   unsafeCfToBase cf   = Fp (valueFF cf)
+  isZero       (Fp k) = (k == 0)
+  isOne        (Fp k) = (k == 1)
   
 instance KnownNat p => BaseDomain (FF p) where
   characteristic pxy  = (ffPrime $ proxyUndef pxy)
@@ -263,16 +280,47 @@ instance KnownNat p => BaseDomain (FF p) where
   factoryChar    pxy  = CharFp (characteristic pxy) 
   baseToCF   (FF cf)  = cf
   unsafeCfToBase      = FF
+  isZero     (FF cf)  = isZeroCF cf
+  isOne      (FF cf)  = isOneCF  cf
     
-instance (KnownNat q, KnownNat n, KnownSymbol x) => BaseDomain (GF q n x) where
+instance (KnownNat p, KnownNat n, KnownSymbol x) => BaseDomain (GF p n x) where
   characteristic pxy  = (gfPrime    $ proxyUndef pxy)
   charExponent   pxy  = (gfExponent $ proxyUndef pxy)
   baseDomainName pxy  = "GF(" ++ show (characteristic pxy) ++ ")" where
   factoryChar    pxy  = CharGF (characteristic pxy) (charExponent pxy)
   baseToCF   (GF cf)  = cf
   unsafeCfToBase      = GF
+  isZero     (GF cf)  = isZeroCF cf
+  isOne      (GF cf)  = isOneCF  cf
 
 --------------------------------------------------------------------------------
+-- * Finite domains
+
+class BaseDomain domain => FiniteDomain domain where
+  domainSize      :: Proxy domain -> Int
+  enumerateDomain :: [domain]
+  
+instance KnownNat p => FiniteDomain (Fp p) where
+  domainSize pxy  = characteristic pxy
+  enumerateDomain = list where
+    list = [ Fp i | i<-[0..p-1] ] 
+    p    = characteristic $ mkProxy (head list) 
+
+instance KnownNat p => FiniteDomain (FF p) where
+  domainSize pxy  = characteristic pxy
+  enumerateDomain = list where
+    list = [ mkFF i | i<-[0..p-1] ] 
+    p    = characteristic $ mkProxy (head list) 
+
+instance (KnownNat p, KnownNat n, KnownSymbol x) => FiniteDomain (GF p n x) where
+  domainSize pxy  = characteristic pxy ^ charExponent pxy
+  enumerateDomain = list where
+    list = 0 : [ genPowGF i | i<-[0..n-2] ] where
+      pxy = mkProxy (head list) 
+      n   = domainSize pxy    
+    
+--------------------------------------------------------------------------------
+-- * Proxy
 
 mkProxy :: a -> Proxy a
 mkProxy _ = Proxy
