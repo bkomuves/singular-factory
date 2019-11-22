@@ -1,6 +1,3 @@
-*.o
-*.hi
-main
 dist
 dist-newstyle
-factory.h
+_misc
