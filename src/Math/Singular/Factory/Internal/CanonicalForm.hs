@@ -2,7 +2,7 @@
 -- | Low-level bindings to singular-factory
 
 {-# LANGUAGE BangPatterns, EmptyDataDecls, ForeignFunctionInterface #-}
-module CanonicalForm where
+module Math.Singular.Factory.Internal.CanonicalForm where
 
 --------------------------------------------------------------------------------
 

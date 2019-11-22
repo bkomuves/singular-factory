@@ -2,15 +2,15 @@
 -- | Brute-force counting of solutions of polynomial equations over (small) finite field
 
 {-# LANGUAGE BangPatterns, TypeApplications, ScopedTypeVariables, DataKinds #-}
-module Counting where
+module Math.Singular.Factory.Counting where
 
 --------------------------------------------------------------------------------
 
 import Data.Proxy
 
-import Domains
-import Polynomial
-import GFTables
+import Math.Singular.Factory.Domains
+import Math.Singular.Factory.Polynomial
+import Math.Singular.Factory.GFTables
 
 --------------------------------------------------------------------------------
 

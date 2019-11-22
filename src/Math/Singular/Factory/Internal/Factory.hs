@@ -2,7 +2,7 @@
 -- | Medium-level bindings to singular-factory
 
 {-# LANGUAGE BangPatterns, DataKinds, TypeSynonymInstances, FlexibleInstances #-}
-module Factory where
+module Math.Singular.Factory.Internal.Factory where
 
 --------------------------------------------------------------------------------
 
@@ -22,13 +22,13 @@ import System.IO.Unsafe as Unsafe
 import Numeric.GMP.Types
 import qualified Numeric.GMP.Utils as GMP 
 
-import CanonicalForm
-import DList as DList
-import GFTables
+import Math.Singular.Factory.Internal.CanonicalForm
+import Math.Singular.Factory.Internal.DList as DList
 
 --------------------------------------------------------------------------------
 -- * tests
 
+{-
 pk :: [Var] -> Int -> CF
 pk vars k = Unsafe.unsafePerformIO $ do
   terms <- sequence [ varPowIO v k | v <- vars ]
@@ -97,6 +97,7 @@ factory_main = do
   putStrLn "\nsanity chack:"
   let test = product $ map (\(fac,expo) -> fac^expo) facs
   printCF (test - what)
+-}
 
 --------------------------------------------------------------------------------
 

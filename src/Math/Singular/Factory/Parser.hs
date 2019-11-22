@@ -1,7 +1,7 @@
 
 -- | Parsing polynomials and polynomial expressions
 
-module Parser where
+module Math.Singular.Factory.Parser where
 
 --------------------------------------------------------------------------------
 
@@ -15,7 +15,7 @@ import Data.Text.Lazy ( Text )
 import qualified Data.Text.Lazy      as T
 import qualified Data.Text.Lazy.Read as T
 
-import DList as DList
+import Math.Singular.Factory.Internal.DList as DList
 
 --------------------------------------------------------------------------------
 

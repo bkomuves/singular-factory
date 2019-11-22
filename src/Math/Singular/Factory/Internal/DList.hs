@@ -1,5 +1,7 @@
 
-module DList where
+-- | Difference lists, minimalistic edition
+
+module Math.Singular.Factory.Internal.DList where
 
 --------------------------------------------------------------------------------
 

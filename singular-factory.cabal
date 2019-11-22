@@ -28,13 +28,14 @@ Library
                        Math.Singular.Factory.Polynomial
                        Math.Singular.Factory.Counting
                        Math.Singular.Factory.Parser
-                       Math.Singular.Factory.Internal.Factory
                        Math.Singular.Factory.GFTables
                        Math.Singular.Factory.Internal.CanonicalForm
                        Math.Singular.Factory.Internal.Factory
                        Math.Singular.Factory.Internal.DList
                            
-  Extensions:          ForeignFunctionInterface, CPP, BangPatterns, TypeSynonymInstances
+  Default-extensions:  BangPatterns, TypeSynonymInstances, FlexibleInstances, FlexibleContexts,
+                       KindSignatures, DataKinds, EmptyDataDecls
+  Other-extensions:    ForeignFunctionInterface, CPP, PatternSynonyms
 
   Hs-Source-Dirs:      src
   
@@ -43,3 +44,4 @@ Library
   extra-libraries:     stdc++
 
   pkgconfig-depends:   factory
+  

@@ -1,8 +1,14 @@
 
--- | Guessing the location of factory\'s gftables
+-- | Guessing the location of factory\'s gftables.
+--
+-- For the Galois field domains to work (for non-primer order), you have to
+-- first initialize singular-factory by setting this directory.
+--
+-- This can be done either by `initGFTables` or `initGFTables'`.
+--
 
-{-# LANGUAGE CPP, BangPatterns #-}
-module GFTables where
+{-# LANGUAGE CPP, BangPatterns, ForeignFunctionInterface #-}
+module Math.Singular.Factory.GFTables where
 
 ------------------------------------------------------------------------------------------
 
@@ -19,8 +25,9 @@ import System.Process
 --------------------------------------------------------------------------------
 -- * Initialization
 
-tryAndInitGFTables :: IO ()
-tryAndInitGFTables = initGFTables Nothing
+-- | We try to guess the location.
+initGFTables :: IO ()
+initGFTables = initGFTables' Nothing
 
 -- | Set the location of the small finite field table files.
 --
@@ -28,8 +35,8 @@ tryAndInitGFTables = initGFTables Nothing
 -- If you don't know, we try to guess it, but I have no idea how
 -- to figure this out in general (pkg-config does not seem to have this information...)
 --
-initGFTables :: Maybe FilePath -> IO ()
-initGFTables mbdir = case mbdir of
+initGFTables' :: Maybe FilePath -> IO ()
+initGFTables' mbdir = case mbdir of
   Just fpath -> setGFTablesDir fpath
   Nothing    -> guessGFTablesDir >>= \d -> case d of
     Just fpath -> do 

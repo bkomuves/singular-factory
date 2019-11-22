@@ -6,7 +6,7 @@
       FlexibleInstances, TypeSynonymInstances, ScopedTypeVariables,
       EmptyDataDecls
   #-}
-module Polynomial where
+module Math.Singular.Factory.Polynomial where
 
 --------------------------------------------------------------------------------
 
@@ -20,14 +20,15 @@ import qualified Data.Sequence as Seq
 
 import System.IO.Unsafe as Unsafe
 
-import GFTables ( tryAndInitGFTables , initGFTables )
+-- import Math.Singular.Factory.GFTables ( tryAndInitGFTables , initGFTables )
 
-import CanonicalForm
-import Factory
-import Domains
+import Math.Singular.Factory.Internal.CanonicalForm
+import Math.Singular.Factory.Internal.Factory
+import Math.Singular.Factory.Domains
 
 --------------------------------------------------------------------------------
 
+{-
 type V = VarAbc 
 type T = Polynomial V Integer -- (GF 3 2 "x") -- Integer
 
@@ -51,7 +52,8 @@ poly_main = do
 
   putStrLn "" 
   print $ p - product [ q^e | (q,e) <- factorize p ]
-  
+-}
+
 --------------------------------------------------------------------------------
 -- * Variables
 
@@ -173,15 +175,26 @@ evaluate fun (Poly cf0) = unsafeCfToBase (go 1 cf0) where
 class VariableSet v where
   varIdxName :: Proxy v -> VarIdx -> String
   
-data VarN  (s :: Symbol)           -- ^ @x1, x2, x3, x4...@
-data Var_N (s :: Symbol)           -- ^ @x_1, x_2, x_3, x_4...@
-data VarBracketN (s :: Symbol)     -- ^ @x[1], x[2], x[3], x[4]...@
+-- | The variable set @x1, x2, x3, x4...@ (where \"x\" can be any string)
+data VarN  (s :: Symbol)   
 
-data VarAbc    -- ^  @a, b, c, d...@
-data VarABC    -- ^  @A, B, C, D...@
+-- | The variable set @x_1, x_2, x_3, x_4...@ (where \"x\" can be any string)
+data Var_N (s :: Symbol)           
 
-data VarXyz    -- ^ @x, y, z, u, v, w, a, b, c...@
-data VarXYZ    -- ^ @X, Y, Z, U, V, W, A, B, C...@
+-- | The variable set @x[1], x[2], x[3], x[4]...@ (where \"x\" can be any string)
+data VarBracketN (s :: Symbol)     
+
+-- | The variable set @a, b, c, d...@
+data VarAbc    
+
+-- | The variable set @A, B, C, D...@
+data VarABC    
+
+-- | The variable set @x, y, z, u, v, w, a, b, c...@
+data VarXyz    
+
+-- | The variable set @X, Y, Z, U, V, W, A, B, C...@
+data VarXYZ    
 
 instance forall s. KnownSymbol s => VariableSet (VarN s) where
   varIdxName _ = indexedVars (symbolVal (Proxy :: Proxy s))

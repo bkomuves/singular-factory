@@ -7,15 +7,19 @@
 -- * the field of rationals
 -- * finite fields (prime fields and Galois fields)
 --
--- Note: as Factory has the base domain as a global state, this whole library is
--- not at all thread safe!
+-- Note1: non-prime order Galois fields are supported only for small orders!
+-- (this is a limitation by singular-factory). Also for them to work, we need
+-- to be able to figure out the location of the \"gftables\" directory first.
+--
+-- Note2: as Factory has the base domain as a global state (...), this whole 
+-- library is not at all thread safe!
 --
 
 {-# LANGUAGE 
       BangPatterns, PatternSynonyms, KindSignatures, DataKinds,
       FlexibleInstances, TypeSynonymInstances
   #-}
-module Domains where
+module Math.Singular.Factory.Domains where
 
 --------------------------------------------------------------------------------
 
@@ -28,13 +32,13 @@ import Data.IORef
 import Control.Monad
 import System.IO.Unsafe as Unsafe
 
-import CanonicalForm
---  ( Var , CF , setCharacteristic1 , setCharacteristic2 , setCharacteristic3 )
-import Factory hiding ( FF , GF )
-import GFTables ( tryAndInitGFTables , initGFTables )
+import Math.Singular.Factory.Internal.CanonicalForm
+import Math.Singular.Factory.Internal.Factory hiding ( FF , GF )
+-- import GFTables ( tryAndInitGFTables , initGFTables )
 
 --------------------------------------------------------------------------------
 
+{-
 domains_main = do
   tryAndInitGFTables
   print $ [ fromIntegral i :: Fp 5  | i<-[0..30] ]
@@ -49,6 +53,7 @@ domains_main = do
       ra3 = 1/a3
   
   print (one,a,a2,a3,ra3,a3*ra3)
+-}
 
 --------------------------------------------------------------------------------
 -- * The global characteristics
