@@ -9,5 +9,5 @@ import Counting
 main = do
   -- factory_main
   -- domains_main
-  -- poly_main
-  counting_main
+  poly_main
+  -- counting_main

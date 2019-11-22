@@ -106,7 +106,7 @@ cntsP polys = do
 --
 -- The @Int@ input is the number of variables (that is, the dimension).
 --
-countAffineHypersurface :: FiniteDomain domain => Int -> Poly vars domain -> Int
+countAffineHypersurface :: FiniteDomain domain => Int -> Polynomial vars domain -> Int
 countAffineHypersurface = go where
   go !1 !p = countTrues [ polyIsZero (substitute1 1 (konst a) p) | a <- enumerateDomain ]    
   go !k !p = sum        [ go (k-1)   (substitute1 k (konst a) p) | a <- enumerateDomain ]
@@ -117,7 +117,7 @@ countAffineHypersurface = go where
 -- The @Int@ input is the number of /variables/ (that is, the dimension plus one)!
 --
 -- NOTE: We assume that the input is a homogeneous polynomial, but this is not checked!! 
-countProjectiveHypersurface :: FiniteDomain domain => Int -> Poly vars domain -> Int
+countProjectiveHypersurface :: FiniteDomain domain => Int -> Polynomial vars domain -> Int
 countProjectiveHypersurface = go False where
   go !isPos !1 !p = countTrues [ polyIsZero $ substitute1 1 (konst a) p | a <- projEnumerateDomain isPos , let b = isPos || not (isZero a) , b ]
   go !isPos !k !p = sum        [ go b (k-1) $ substitute1 k (konst a) p | a <- projEnumerateDomain isPos , let b = isPos || not (isZero a)     ]
@@ -129,7 +129,7 @@ countProjectiveHypersurface = go False where
 -- over a finite field.
 --
 -- The @Int@ input is the number of variables (that is, the dimension).
-countAffineSolutions :: FiniteDomain domain => Int -> [Poly vars domain] -> Int
+countAffineSolutions :: FiniteDomain domain => Int -> [Polynomial vars domain] -> Int
 countAffineSolutions = go where
   go !1 !ps = countTrues [ and $ map polyIsZero $ map (substitute1 1 (konst a)) ps | a <- enumerateDomain ]    
   go !k !ps = sum        [ go (k-1)             $ map (substitute1 k (konst a)) ps | a <- enumerateDomain ]
@@ -140,7 +140,7 @@ countAffineSolutions = go where
 -- The @Int@ input is the number of /variables/ (that is, the dimension plus one)!
 -- 
 -- NOTE: We assume that the input is a list of homogeneous polynomial, but this is not checked!! 
-countProjectiveSolutions :: FiniteDomain domain => Int -> [Poly vars domain] -> Int
+countProjectiveSolutions :: FiniteDomain domain => Int -> [Polynomial vars domain] -> Int
 countProjectiveSolutions = go False where
   go !isPos !1 !ps = countTrues [ and $ map polyIsZero $ map (substitute1 1 (konst a)) ps | a <- projEnumerateDomain isPos , let b = isPos || not (isZero a) , b ]
   go !isPos !k !ps = sum        [ go b (k-1)           $ map (substitute1 k (konst a)) ps | a <- projEnumerateDomain isPos , let b = isPos || not (isZero a)     ]
