@@ -28,6 +28,7 @@ import Math.Singular.Factory.Internal.DList as DList
 --------------------------------------------------------------------------------
 
 -- | The maximum prime characteristic Factory can handle
+-- (note: for prime power fields the limit is much smaller)
 maxCharacteristic :: Int
 maxCharacteristic = 536870909     -- 2^29-3
 

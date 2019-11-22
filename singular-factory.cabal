@@ -25,16 +25,18 @@ Library
                        hgmp >= 0.1.1
     
   Exposed-Modules:     Math.Singular.Factory.Domains
+                       Math.Singular.Factory.Variables
                        Math.Singular.Factory.Polynomial
-                       Math.Singular.Factory.Counting
                        Math.Singular.Factory.Parser
+                       Math.Singular.Factory.Counting
                        Math.Singular.Factory.GFTables
                        Math.Singular.Factory.Internal.CanonicalForm
                        Math.Singular.Factory.Internal.Factory
                        Math.Singular.Factory.Internal.DList
                            
   Default-extensions:  BangPatterns, TypeSynonymInstances, FlexibleInstances, FlexibleContexts,
-                       KindSignatures, DataKinds, EmptyDataDecls
+                       KindSignatures, DataKinds, EmptyDataDecls, ScopedTypeVariables
+                       
   Other-extensions:    ForeignFunctionInterface, CPP, PatternSynonyms
 
   Hs-Source-Dirs:      src
