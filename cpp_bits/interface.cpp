@@ -35,6 +35,30 @@ void get_package_version(char *str, int n)
   str[n-1]=0;
 }
 
+extern "C" int have_FLINT() { 
+#ifdef HAVE_FLINT
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+extern "C" int have_NTL() { 
+#ifdef HAVE_NTL
+  return 1;
+#else
+  return 0;
+#endif
+}
+
+extern "C" int have_GMP() { 
+#ifdef HAVE_GMP
+  return 1;
+#else
+  return 0;
+#endif
+}
+
 // -----------------------------------------------------------------------------
 // config
 

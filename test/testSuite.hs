@@ -14,8 +14,7 @@ import System.Random
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Math.Singular.Factory.GFTables ( initGFTables )
-import Math.Singular.Factory.Internal.CanonicalForm ( setDefaultSwitches )
+import Math.Singular.Factory
 
 import Math.Singular.Factory.Domains
 import Math.Singular.Factory.Polynomial
@@ -25,8 +24,8 @@ import Math.Singular.Factory.Variables
 --------------------------------------------------------------------------------
 
 main = do
-  initGFTables  
-  setDefaultSwitches
+  initialize
+  printConfig
   defaultMain tests
 
 tests :: TestTree

@@ -58,6 +58,10 @@ getPackageVersion = do
     c_get_package_version ptr n
     peekCString ptr
 
+foreign import ccall "have_FLINT" c_have_FLINT :: IO CInt
+foreign import ccall "have_NTL"   c_have_NTL   :: IO CInt
+foreign import ccall "have_GMP"   c_have_GMP   :: IO CInt
+
 --------------------------------------------------------------------------------
 -- * config
 

@@ -22,6 +22,19 @@ import System.FilePath
 import System.Directory
 import System.Process
 
+import Data.IORef
+import System.IO.Unsafe as Unsafe
+
+--------------------------------------------------------------------------------
+-- * A global variable
+
+{-# NOINLINE theGFTablesDir #-}
+theGFTablesDir :: IORef (Maybe FilePath)
+theGFTablesDir = Unsafe.unsafePerformIO $ newIORef Nothing 
+
+getGFTablesDir :: IO (Maybe FilePath)
+getGFTablesDir = readIORef theGFTablesDir
+
 --------------------------------------------------------------------------------
 -- * Initialization
 
@@ -40,15 +53,18 @@ initGFTables' mbdir = case mbdir of
   Just fpath -> setGFTablesDir fpath
   Nothing    -> guessGFTablesDir >>= \d -> case d of
     Just fpath -> do 
-      putStrLn $ "gftables dir = " ++ (fpath </> "gftables")
+      -- putStrLn $ "gftables dir = " ++ (fpath </> "gftables")
       setGFTablesDir fpath
-    Nothing    -> error "FATAL: cannot find factory's gftables"
+    Nothing    -> do
+      writeIORef theGFTablesDir Nothing
+      putStrLn "WARNING: cannot find factory's gftables"
 
 setGFTablesDir :: FilePath -> IO ()
 setGFTablesDir fpath0 = do
   fpath1 <- canonicalizePath fpath0
   withCString (fpath1 ++ "/") $ \ptr -> set_gftable_dir ptr
-
+  writeIORef theGFTablesDir (Just fpath1)
+  
 -- | Apparently we need to manually find the directory containing the GF tables...
 --
 -- On my debian install it is at @\/usr\/share\/singular\/factory\/gftables\/@, but how

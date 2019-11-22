@@ -33,13 +33,18 @@ maxCharacteristic :: Int
 maxCharacteristic = 536870909     -- 2^29-3
 
 --------------------------------------------------------------------------------
--- * Version info
+-- * Version and configuration info
 
 factoryVersion :: String
 factoryVersion = Unsafe.unsafePerformIO getFactoryVersion
 
 packageVersion :: String
 packageVersion = Unsafe.unsafePerformIO getPackageVersion
+
+haveFLINT, haveNTL, haveGMP :: Bool
+haveFLINT = Unsafe.unsafePerformIO (cint2bool <$> c_have_FLINT)
+haveNTL   = Unsafe.unsafePerformIO (cint2bool <$> c_have_NTL  )
+haveGMP   = Unsafe.unsafePerformIO (cint2bool <$> c_have_GMP  )
 
 --------------------------------------------------------------------------------
 -- * Basic operations and instances
