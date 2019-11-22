@@ -1,7 +1,19 @@
 
 -- | Parsing polynomials and polynomial expressions
 
-module Math.Singular.Factory.Parser where
+{-# LANGUAGE BangPatterns #-}
+module Math.Singular.Factory.Parser 
+  ( -- * Parsing polynomials 
+    parseExpr
+    -- * Parser monad
+  , Parser, runParser
+  , (<||>) , try
+    -- * Parsers
+  , charP , charP_ , spacesP_ , eofP  
+  , signP , natP , integerP , identifierP
+  , exprP 
+  ) 
+  where
 
 --------------------------------------------------------------------------------
 
@@ -15,9 +27,16 @@ import Data.Text.Lazy ( Text )
 import qualified Data.Text.Lazy      as T
 import qualified Data.Text.Lazy.Read as T
 
+import Math.Singular.Factory.Expr
+
 import Math.Singular.Factory.Internal.DList as DList
 
 --------------------------------------------------------------------------------
+
+type Var = String
+
+--------------------------------------------------------------------------------
+-- * the Parser monad
 
 newtype Parser a = P { runParser :: Text -> Either String (a,Text) }
 
@@ -87,13 +106,7 @@ withSpaces action = do
   return y
 
 --------------------------------------------------------------------------------
-
-type Var = String
-
-data Sign 
-  = Plus 
-  | Minus 
-  deriving (Eq,Ord,Show)
+-- * Parsing simple things
 
 _signP :: Parser Sign
 _signP = charP (\c -> (c=='+' || c=='-')) >>= \ch -> return $ if (ch=='+') then Plus else Minus
@@ -126,14 +139,17 @@ naturalP = P (T.decimal)
 integerP :: Parser Integer
 integerP = P (T.signed T.decimal)
 
-_variableP :: Parser Var
-_variableP = do
+identifierP :: Parser String
+identifierP = do
   x  <- charP          isAlpha
   xs <- charsP $ \c -> isAlpha c || isDigit c || (c == '_')
   return (x:xs)
 
+--------------------------------------------------------------------------------
+-- * parsing polynomials
+
 varP :: Parser Var
-varP = withSpaces _variableP
+varP = withSpaces identifierP
 
 kstP :: Parser Integer
 kstP = withSpaces integerP
@@ -151,69 +167,25 @@ varPowP = do
     Nothing -> return (v,1)
     Just e  -> return (v,e)
 
-monomP :: Parser [(Var,Int)]
-monomP = do
+_monomP :: Parser [(Var,Int)]
+_monomP = do
   ve <- varPowP
   mb <- try $ do
     charP_ (=='*')
     spacesP_
-    ves <- monomP
+    ves <- _monomP
     return ves
   case mb of
     Nothing  -> return (ve:[] )
     Just ves -> return (ve:ves)
+
+monomP :: Parser (Monom Var)
+monomP = Monom <$> _monomP
   
 --------------------------------------------------------------------------------
+-- * Parsing polynomial expressions
 
--- | Polynomial expressions
-data Expr
-  = VarE !Var
-  | KstE !Integer
-  | NegE Expr
-  | LinE [(Sign,Expr)]
-  | MulE [Expr]
-  | PowE Expr !Int
-  deriving (Eq,Ord,Show)
-
-evalSign :: Num c => Sign -> c -> c
-evalSign Plus  = id
-evalSign Minus = negate
- 
-evalExpr :: Num c => (Var -> c) -> Expr -> c
-evalExpr evalVar = go where
-  go expr = case expr of
-    VarE v   -> evalVar v
-    KstE k   -> fromInteger k
-    NegE e   -> negate (go e)
-    LinE xs  -> sum [ evalSign pm (go x) | (pm,x) <- xs ]
-    MulE xs  -> product (map go xs)
-    PowE e k -> (go e)^k
-    
---------------------------------------------------------------------------------
-
-{-
-
-prettExpr :: Expr -> String
-prettExpr expr = DList.toList (prettPrecExpr 0 expr)
-
-prettyPrecExpr :: Int -> Expr -> DList Char
-prettyPrecExpr = go where
-
-  chr c = DList.singleton c
-  str s = DList.append s
-
-  go !prec !expr = case expr of
-    VarE !Var
-    KstE !Integer
-    NegE Expr
-    LinE [(Sign,Expr)]
-    MulE [Expr]
-    PowE Expr !Int
-
--}
-
---------------------------------------------------------------------------------
-
+exprP :: Parser (Expr Var)
 exprP = do
   spacesP_ 
   level3
@@ -225,7 +197,7 @@ level1 =                         powP <||> atomicP
 level2 =           productP <||> powP <||> atomicP 
 level3 = sumP <||> productP <||> powP <||> atomicP 
 
-powP :: Parser Expr
+powP :: Parser (Expr Var)
 powP = do
   (e,n) <- _powP
   return $ case n of
@@ -233,7 +205,7 @@ powP = do
     1 -> e
     _ -> PowE e n
 
-_powP :: Parser (Expr,Int)
+_powP :: Parser (Expr Var,Int)
 _powP = do
   e <- level0
   spacesP_
@@ -243,14 +215,14 @@ _powP = do
   spacesP_
   return (e,n)
 
-productP :: Parser Expr
+productP :: Parser (Expr Var)
 productP = do
   es <- _productP
   return $ case es of
     [x] -> x
     _   -> MulE es
 
-_productP :: Parser [Expr]
+_productP :: Parser [Expr Var]
 _productP = do
   e1 <- level1
   spacesP_
@@ -263,7 +235,7 @@ _productP = do
     Nothing  -> return (e1:[])
     Just es  -> return (e1:es)
 
-sumP :: Parser Expr
+sumP :: Parser (Expr Var)
 sumP = do
   es <- _sumP
   return $ case es of
@@ -271,13 +243,13 @@ sumP = do
     [(Minus,x)] -> NegE x
     _           -> LinE es
 
-_sumP :: Parser [(Sign,Expr)]
+_sumP :: Parser [(Sign,Expr Var)]
 _sumP = do
   pm <- optionalSignP
   (this,rest) <- __sumP
   return ((pm,this):rest)
 
-__sumP :: Parser (Expr,[(Sign,Expr)])
+__sumP :: Parser ( Expr Var , [(Sign,Expr Var)] )
 __sumP = do
   e1  <- level2
   spacesP_
@@ -292,9 +264,11 @@ __sumP = do
 
 --------------------------------------------------------------------------------
 
-parseExpr :: Text -> Either String Expr
+parseExpr :: Text -> Either String (Expr Var)
 parseExpr text = case runParser (withEof exprP) text of
   Right (y,_) -> Right y
   Left  msg   -> Left msg
+
+--------------------------------------------------------------------------------
 
     

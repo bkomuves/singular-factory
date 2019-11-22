@@ -27,6 +27,7 @@ Library
   Exposed-Modules:     Math.Singular.Factory.Domains
                        Math.Singular.Factory.Variables
                        Math.Singular.Factory.Polynomial
+                       Math.Singular.Factory.Expr
                        Math.Singular.Factory.Parser
                        Math.Singular.Factory.Counting
                        Math.Singular.Factory.GFTables
