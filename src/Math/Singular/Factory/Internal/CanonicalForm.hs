@@ -39,6 +39,26 @@ foreign import ccall "level_quot"  c_level_quot  :: CInt
 foreign import ccall "level_expr"  c_level_expr  :: CInt  
 
 --------------------------------------------------------------------------------
+-- * versions
+
+foreign import ccall "get_factory_version" c_get_factory_version :: Ptr CChar -> Int -> IO ()
+foreign import ccall "get_package_version" c_get_package_version :: Ptr CChar -> Int -> IO ()
+
+getFactoryVersion :: IO String
+getFactoryVersion = do
+  let n = 16
+  allocaArray n $ \ptr -> do
+    c_get_factory_version ptr n
+    peekCString ptr
+
+getPackageVersion :: IO String
+getPackageVersion = do
+  let n = 16
+  allocaArray n $ \ptr -> do
+    c_get_package_version ptr n
+    peekCString ptr
+
+--------------------------------------------------------------------------------
 -- * memory management
 
 foreign import ccall "&free_var"

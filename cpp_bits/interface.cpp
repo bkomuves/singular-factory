@@ -19,6 +19,23 @@ extern "C" int level_quot()  { return LEVELQUOT;  }
 extern "C" int level_expr()  { return LEVELEXPR;  }
 
 // -----------------------------------------------------------------------------
+// version info
+
+extern "C"
+void get_factory_version(char *str, int n)
+{
+  strncpy(str,FACTORYVERSION,n);
+  str[n-1]=0;
+}
+
+extern "C"
+void get_package_version(char *str, int n)
+{
+  strncpy(str,PACKAGE_VERSION,n);
+  str[n-1]=0;
+}
+
+// -----------------------------------------------------------------------------
 // Variable
 
 extern "C" 

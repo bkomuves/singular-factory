@@ -33,6 +33,15 @@ maxCharacteristic :: Int
 maxCharacteristic = 536870909     -- 2^29-3
 
 --------------------------------------------------------------------------------
+-- * Version info
+
+factoryVersion :: String
+factoryVersion = Unsafe.unsafePerformIO getFactoryVersion
+
+packageVersion :: String
+packageVersion = Unsafe.unsafePerformIO getPackageVersion
+
+--------------------------------------------------------------------------------
 -- * Basic operations and instances
 
 -- | Because the native equality comparison seems to be unreliable,
