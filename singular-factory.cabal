@@ -45,3 +45,22 @@ Library
 
   pkgconfig-depends:   factory
   
+--------------------------------------------------------------------------------
+
+test-suite singular-factory-tests
+                      
+  type:                exitcode-stdio-1.0
+  
+  hs-source-dirs:      test
+  main-is:             TestSuite.hs
+                         
+  build-depends:       base >= 4 && < 5, random,
+                       singular-factory >= 0.1,
+                       QuickCheck >= 2,
+                       tasty, tasty-quickcheck, tasty-hunit
+
+  Default-Language:    Haskell2010
+  Default-Extensions:  CPP, BangPatterns
+  
+--------------------------------------------------------------------------------
+  
