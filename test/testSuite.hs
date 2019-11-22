@@ -19,6 +19,7 @@ import Math.Singular.Factory.GFTables ( initGFTables )
 import Math.Singular.Factory.Domains
 import Math.Singular.Factory.Polynomial
 import Math.Singular.Factory.Counting
+import Math.Singular.Factory.Variables
 
 --------------------------------------------------------------------------------
 
@@ -35,6 +36,10 @@ tests = testGroup "Tests"
 unit_tests :: TestTree
 unit_tests = testGroup "Unit tests"
   [ testCase "reconstruction for some polys over Z"      (assertBool "failed" $ reconstr_some_polys some_polys_ZZ)
+  , testGroup "reconstr. of some more polys over Z" 
+      [ testCase ("poly #" ++ show i) (assertBool "failed" $ prop_reconstr_from_factors p) 
+      | (i,p) <- zip [0..] some_more_polys_ZZ 
+      ]
   , testCase "reconstruction for some polys over F_2"    (assertBool "failed" $ reconstr_some_polys some_polys_F2)
   , testCase "reconstruction for some polys over F_3"    (assertBool "failed" $ reconstr_some_polys some_polys_F3)
   , testCase "reconstruction for some polys over F_5"    (assertBool "failed" $ reconstr_some_polys some_polys_F5)
@@ -47,8 +52,8 @@ unit_tests = testGroup "Unit tests"
 
 type Poly domain = Polynomial VarAbc domain 
 
-some_polys_v1_ZZ :: [Poly Integer]
-some_polys_v1_ZZ = 
+some_polys_ZZ :: [Poly Integer]
+some_polys_ZZ = 
   [ (x^2 + 1) * (x^5 + 1) * (x^7 + 1)
   
   , x^2 - y^2
@@ -77,24 +82,39 @@ some_polys_v1_ZZ =
     myvars@[x,y,z,u,v,w] = map var [1..6]
 
 -- | These seem to be too big for finite fields except GF(2) ???
-some_polys_v2_ZZ :: [Poly Integer]
-some_polys_v2_ZZ =
+some_more_polys_ZZ :: [Poly Integer]
+some_more_polys_ZZ=
   [ (x-13) * (x+27) * (x-42)^2 * (x+7)^3 * (x-11)^5
   , ( (1+x+y+z)^4 + 1 ) * ( (1+x+y+z)^4 + 2 ) 
   , ( (1+x+y+z)^5 + 1 ) * ( (1+x+y+z)^5 + 2 ) 
   , ( (1+x+y+z)^7 + 1 ) * ( (1+x+y+z)^7 + 2 ) 
   , ( (1+x+y+z)^10 + 1 ) * ( (1+x+y+z)^10 + 2 ) 
   , ( (1+x+y+z)^20 + 1 ) * ( (1+x+y+z)^20 + 2 ) 
-  ] 
+  ] ++
+  [ sparse1 hk | hk <- [5,8..25] ] ++
+  [ sparse2  k |  k <- [5..15] ] 
   where
     myvars@[x,y,z,u,v,w] = map var [1..6]
 
-some_polys_ZZ :: [Poly Integer]
-some_polys_ZZ = concat
-  [ some_polys_v1_ZZ
-  , some_polys_v2_ZZ
-  ] 
-  
+-- from: 
+-- Martin Mok-Don Lee: Factorization of multivariate polynomials 
+sparse1 :: Int -> Poly Integer
+sparse1 halfk  
+  = (x^2*y^2*z   + x*(y^k+z^k) + 3*y + 3*z - 3*z^2 - 2*y^halfk*z^halfk ) 
+  * (x^2*y^2*z^2 + x*(y^k+z^k) - 2*y - 5*z + 4*y^2 + 3*y^halfk*z^halfk ) 
+  where
+    k = 2*halfk
+    [x,y,z] = map var [1..3]
+
+-- from:
+-- Martin Mok-Don Lee: Factorization of multivariate polynomials 
+sparse2 :: Int -> Poly Integer
+sparse2 k 
+  = ( (x*(  y^3+2*z^3) + 5*y*z)*(x*(y+4*z)+2) + (2*x-7)*(y^k*z^k-y^(k-1)*z^(k-1)) )
+  * ( (x*(3*y^3+4*z^3) + 3*y*z)*(x*(y+3*z)+7) - (3*x+5)*(y^k*z^k-y^(k-1)*z^(k-1)) )
+  where
+    [x,y,z] = map var [1..3]
+
 --------------------------------------------------------------------------------
 
 
@@ -102,19 +122,19 @@ some_polys_F2 :: [Poly (FF 2)]
 some_polys_F2 = map mapIntoDomain some_polys_ZZ
 
 some_polys_F3 :: [Poly (FF 3)]
-some_polys_F3 = map mapIntoDomain some_polys_v1_ZZ
+some_polys_F3 = map mapIntoDomain some_polys_ZZ
 
 some_polys_F5 :: [Poly (FF 5)]
-some_polys_F5 = map mapIntoDomain some_polys_v1_ZZ
+some_polys_F5 = map mapIntoDomain some_polys_ZZ
 
 some_polys_GF4 :: [Poly (GF 2 2 "q")]
-some_polys_GF4 = map mapIntoDomain some_polys_v1_ZZ
+some_polys_GF4 = map mapIntoDomain some_polys_ZZ
 
 some_polys_GF8 :: [Poly (GF 2 3 "q")]
-some_polys_GF8 = map mapIntoDomain some_polys_v1_ZZ
+some_polys_GF8 = map mapIntoDomain some_polys_ZZ
 
 some_polys_GF9 :: [Poly (GF 3 2 "q")]
-some_polys_GF9 = map mapIntoDomain some_polys_v1_ZZ
+some_polys_GF9 = map mapIntoDomain some_polys_ZZ
 
 --------------------------------------------------------------------------------
 -- TODO: collect examples where the factorization is known
