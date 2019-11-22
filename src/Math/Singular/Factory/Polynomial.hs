@@ -86,7 +86,7 @@ newtype Polynomial varset domain
   = Poly { unPoly :: CF }
 
 instance Eq (Polynomial vars domain) where
-  (==) (Poly cf1) (Poly cf2) = cf1 == cf2
+  (==) (Poly cf1) (Poly cf2) = safeEqCF cf1 cf2
 
 instance forall vars domain. VariableSet vars => Show (Polynomial vars domain) where
   show (Poly cf) = showCF_with (varIdxName (Proxy :: Proxy vars)) cf

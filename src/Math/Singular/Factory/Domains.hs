@@ -88,7 +88,7 @@ mapIntoCF char cf = Unsafe.unsafePerformIO $ do
 --------------------------------------------------------------------------------
 -- * Prime fields
 
--- | Haskell prime fields
+-- | Haskell prime fields (this is provided only for completeness)
 newtype Fp (p :: Nat) 
   = Fp Int 
   deriving (Eq)
@@ -135,7 +135,7 @@ mkFF !k = ff where
     return (FF cf)
     
 instance Eq (FF p) where 
-  (FF a) == (FF b) = eqCF a b
+  (FF a) == (FF b) = nativeEqCF a b
 
 instance Show (FF p) where 
   show (FF cf) = show (valueFF cf) -- "[" ++ show (valueFF cf) ++ "]"
@@ -198,7 +198,7 @@ powGF :: (KnownNat p, KnownNat n, KnownSymbol x) => GF p n x -> Int -> GF p n x
 powGF (GF cf) e = GF (powCF cf e)
 
 instance Eq (GF p n x) where 
-  (GF a) == (GF b)  =  eqCF a b
+  (GF a) == (GF b)  =  nativeEqCF a b
 
 instance (KnownNat p, KnownNat n, KnownSymbol x) => Show (GF p n x) where 
   show gf@(GF cf) = showGFValue1 (gfSymbol gf) (valueGF cf)

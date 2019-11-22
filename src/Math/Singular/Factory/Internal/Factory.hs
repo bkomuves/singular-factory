@@ -108,8 +108,16 @@ maxCharacteristic = 536870909     -- 2^29-3
 --------------------------------------------------------------------------------
 -- * Basic operations and instances
 
-eqCF :: CF -> CF -> Bool
-eqCF x y = Unsafe.unsafePerformIO (isEqualIO x y)
+-- | Because the native equality comparison seems to be unreliable,
+-- we provide an alternative implementation which subtracts the two
+-- polynomials and then tests for the result being zero...
+safeEqCF :: CF -> CF -> Bool
+safeEqCF x y = isZeroCF (x - y)
+
+-- | Note: this does not seem to be reliable in practice...
+-- Better subtract them and then use isZeroCF...
+nativeEqCF :: CF -> CF -> Bool
+nativeEqCF x y = Unsafe.unsafePerformIO (isEqualIO x y)
 
 {- there is already an instance... -}
 -- instance Eq CF where (==) = eqCF
