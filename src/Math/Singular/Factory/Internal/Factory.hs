@@ -99,6 +99,24 @@ reduceCF x y = Unsafe.unsafePerformIO (reduceIO x y)
 factorizeCF :: CF -> [(CF,Int)]
 factorizeCF x = Unsafe.unsafePerformIO (factorizeIO x)
 
+{-
+-- | Factorization over prime fields. The flag is whether to perform substitution check
+fpFactorizeCF :: CF -> Bool -> [(CF,Int)]
+fpFactorizeCF x flag = Unsafe.unsafePerformIO (fpFactorizeIO x flag)
+
+-- | Factorization over GF (prime power) fields. The flag is whether to perform substitution check
+gfFactorizeCF :: CF -> Bool -> [(CF,Int)]
+gfFactorizeCF x flag = Unsafe.unsafePerformIO (gfFactorizeIO x flag)
+
+-- | Factorization over algebraic extensions of Q. The flag is whether to perform substitution check
+ratFactorizeCF :: CF -> Var -> Bool -> [(CF,Int)]
+ratFactorizeCF x alpha flag = Unsafe.unsafePerformIO (ratFactorizeIO x alpha flag)
+
+-- | Factorization over algebraic extensions of a prime field. The flag is whether to perform substitution check
+fqFactorizeCF :: CF -> Var -> Bool -> [(CF,Int)]
+fqFactorizeCF x alpha flag = Unsafe.unsafePerformIO (fqFactorizeIO x alpha flag)
+-}
+
 --------------------------------------------------------------------------------
 -- * pretty printing
 

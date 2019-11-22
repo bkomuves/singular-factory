@@ -7,9 +7,14 @@
 -- * the field of rationals
 -- * finite fields (prime fields and Galois fields)
 --
+-- Another representation for finite fields are explicit algebraic extensions
+-- of prime fields. This has less limitations (does not rely on precomputed
+-- tables), but it is not implemented yet.  
+--
 -- Note1: non-prime order Galois fields are supported only for small orders!
--- (this is a limitation by singular-factory). Also for them to work, we need
--- to be able to figure out the location of the \"gftables\" directory first.
+-- (this is a limitation by singular-factory). 
+-- Also for them to work, we need to be able to figure out the location of the 
+-- \"gftables\" directory first.
 --
 -- Note2: as Factory has the base domain as a global state (...), this whole 
 -- library is not at all thread safe!
@@ -148,7 +153,10 @@ instance (KnownNat p) => Fractional (FF p) where
 -- The symbol is the name of the canonical generator (used for pretty-printing).
 --
 -- Note: because of how Factory is implemented, it is /required/ that @n >= 2@...
--- (use 'FF' for prime fields)
+-- (use 'FF' for prime fields).
+--
+-- Also, the sizes are really limited (because they rely on tables, and only
+-- small tables are included): @p < 256@ and @p^n < 65536@
 --
 newtype GF (p :: Nat) (n :: Nat) (x :: Symbol) 
   = GF { unGF :: CF }

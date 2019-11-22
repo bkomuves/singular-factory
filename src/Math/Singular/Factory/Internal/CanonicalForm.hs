@@ -59,6 +59,15 @@ getPackageVersion = do
     peekCString ptr
 
 --------------------------------------------------------------------------------
+-- * config
+
+foreign import ccall "set_default_switches" c_set_default_switches :: IO ()
+
+setDefaultSwitches :: IO ()
+setDefaultSwitches = do
+  c_set_default_switches
+  
+--------------------------------------------------------------------------------
 -- * memory management
 
 foreign import ccall "&free_var"
@@ -178,13 +187,52 @@ flattenFactorList faclist = withForeignPtr faclist $ \listptr -> do
 unpackFactorList :: FacList -> IO [(CF,Int)]
 unpackFactorList faclist = mapM unpackFactor =<< flattenFactorList faclist
 
-foreign import ccall "my_factorize" c_factorize :: Ptr CanonicalForm -> Ptr FactorList
+foreign import ccall "hs_factorize" c_hs_factorize :: Ptr CanonicalForm -> IO (Ptr FactorList)
 
 factorizeIO' :: CF -> IO FacList
-factorizeIO' cf = withForeignPtr cf $ \ptr -> makeFacList (c_factorize ptr)
+factorizeIO' cf = withForeignPtr cf $ \ptr -> makeFacList =<< (c_hs_factorize ptr)
 
 factorizeIO :: CF -> IO [(CF,Int)]
 factorizeIO cf = unpackFactorList =<< factorizeIO' cf
+
+{-
+foreign import ccall "rat_factorize" c_rat_factorize :: Ptr CanonicalForm -> Ptr Variable -> CInt -> IO (Ptr FactorList)
+foreign import ccall "fq_factorize"  c_fq_factorize  :: Ptr CanonicalForm -> Ptr Variable -> CInt -> IO (Ptr FactorList)
+foreign import ccall "fp_factorize"  c_fp_factorize  :: Ptr CanonicalForm -> CInt -> IO (Ptr FactorList)
+foreign import ccall "gf_factorize"  c_gf_factorize  :: Ptr CanonicalForm -> CInt -> IO (Ptr FactorList)
+
+fpFactorizeIO' :: CF -> Bool -> IO FacList
+fpFactorizeIO' cf subst_check_flag = 
+  withForeignPtr cf $ \ptr -> 
+    makeFacList =<< (c_fp_factorize ptr (bool2cint subst_check_flag))
+
+gfFactorizeIO' :: CF -> Bool -> IO FacList
+gfFactorizeIO' cf subst_check_flag = 
+  withForeignPtr cf $ \ptr -> 
+    makeFacList =<< (c_gf_factorize ptr (bool2cint subst_check_flag))
+
+ratFactorizeIO' :: CF -> Var -> Bool -> IO FacList
+ratFactorizeIO' cf var subst_check_flag = 
+  withForeignPtr cf $ \ptr -> withForeignPtr var $ \varptr -> 
+    makeFacList =<< (c_rat_factorize ptr varptr (bool2cint subst_check_flag))
+
+fqFactorizeIO' :: CF -> Var -> Bool -> IO FacList
+fqFactorizeIO' cf var subst_check_flag = 
+  withForeignPtr cf $ \ptr -> withForeignPtr var $ \varptr -> 
+    makeFacList =<< (c_fq_factorize ptr varptr (bool2cint subst_check_flag))
+
+fpFactorizeIO :: CF -> Bool -> IO [(CF,Int)]
+fpFactorizeIO cf flag = unpackFactorList =<< fpFactorizeIO' cf flag
+
+gfFactorizeIO :: CF -> Bool -> IO [(CF,Int)]
+gfFactorizeIO cf flag = unpackFactorList =<< gfFactorizeIO' cf flag
+
+ratFactorizeIO :: CF -> Var -> Bool -> IO [(CF,Int)]
+ratFactorizeIO cf var flag = unpackFactorList =<< ratFactorizeIO' cf var flag 
+
+fqFactorizeIO :: CF -> Var -> Bool -> IO [(CF,Int)]
+fqFactorizeIO cf var flag = unpackFactorList =<< fqFactorizeIO' cf var flag 
+-}
 
 --------------------------------------------------------------------------------
 -- * basic CFs
@@ -211,8 +259,17 @@ varPowIO var expo = withForeignPtr var $ \vptr -> makeCF =<< c_var_pow_cf vptr e
 --------------------------------------------------------------------------------
 -- * basic CF predicates
 
+bool2cint :: Bool -> CInt
+bool2cint True  = 1
+bool2cint False = 0
+
+cint2bool :: CInt -> Bool
+cint2bool k = (k/=0)
+
 liftBool :: IO CInt -> IO Bool
-liftBool action = action >>= \k -> return (k/=0)
+liftBool action = action >>= \k -> return (cint2bool k)
+
+----------------------------------------
 
 foreign import ccall "is_zero" c_is_zero :: Ptr CanonicalForm -> IO CInt
 foreign import ccall "is_one"  c_is_one  :: Ptr CanonicalForm -> IO CInt

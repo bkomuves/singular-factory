@@ -98,10 +98,28 @@ polyGCD (Poly cf1) (Poly cf2) = Poly $ gcdPolyCF cf1 cf2
 polyReduce :: BaseDomain domain => Polynomial vars domain -> Polynomial vars domain -> Polynomial vars domain 
 polyReduce (Poly cf1) (Poly cf2) = Poly $ reduceCF cf1 cf2
 
--- | Polynomial factorization
+-- | Polynomial factorization 
 factorize :: BaseDomain domain => Polynomial vars domain -> [(Polynomial vars domain, Int)]
 factorize (Poly cf) = map f (factorizeCF cf) where
   f (p, expo) = (Poly p, expo)
+
+{-
+-- | Polynomial factorization (the new algorithms by Martin Lee)
+factorizeNew :: forall vars domain. BaseDomain domain => Polynomial vars domain -> [(Polynomial vars domain, Int)]
+factorizeNew (Poly cf) = 
+  case factoryChar (Proxy :: Proxy domain) of
+    CharZero   -> map f (ratFactorizeCF cf alphaOne True)
+    CharFp p   -> map f (fpFactorizeCF  cf          True)
+    CharGF p n -> map f (gfFactorizeCF  cf          True)
+  where
+    f (p, expo) = (Poly p, expo)
+    alphaOne = theNthVar 1          -- const Variable& v= Variable (1)   
+  
+-- | Polynomial factorization (old way)
+factorizeOld :: BaseDomain domain => Polynomial vars domain -> [(Polynomial vars domain, Int)]
+factorizeOld (Poly cf) = map f (oldFactorizeCF cf) where
+  f (p, expo) = (Poly p, expo)
+-}
 
 -- | Substitution
 substitute1 :: BaseDomain domain => VarIdx -> Polynomial vars domain -> Polynomial vars domain -> Polynomial vars domain

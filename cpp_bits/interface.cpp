@@ -36,6 +36,27 @@ void get_package_version(char *str, int n)
 }
 
 // -----------------------------------------------------------------------------
+// config
+
+extern "C"
+void set_default_switches()
+{
+#ifdef HAVE_NTL
+  // printf("we have NTL\n");
+  On(SW_USE_CHINREM_GCD);
+  On(SW_USE_NTL_SORT);
+#endif
+#ifdef HAVE_FLINT
+  // printf("we have FLINT\n");
+  On(SW_USE_FL_GCD_P);
+  On(SW_USE_FL_GCD_0);
+#endif
+  On(SW_USE_EZGCD);
+  On(SW_USE_EZGCD_P);
+  On(SW_USE_QGCD);
+}
+
+// -----------------------------------------------------------------------------
 // Variable
 
 extern "C" 
@@ -221,14 +242,62 @@ void flatten_faclist (FacList *ptr, Fac **tgt_arr)
   }
 }
 
+// -----------------------------------------------------------------------------
+// FACTORIZATION
+
 extern "C" 
-FacList *my_factorize (CF *ptr)
+FacList *hs_factorize (CF *ptr)
 {
   CanonicalForm *cfp  = (CanonicalForm*) ptr;
   CFFList *listp = new CFFList( factorize( *cfp ) );  
   return (void*)listp;
 }
 
+// -------------------------------------
+
+/* 
+
+// factorize a multivariate polynomial over Q(alpha)
+// (alpha can be 1???)
+extern "C"
+FacList *rat_factorize(CF *cfptr, Var *vptr, int substCheck)
+{
+  CanonicalForm *cfp  = (CanonicalForm*) cfptr;
+  Variable *alpha     = (Variable*) vptr;
+  CFFList *listp = new CFFList( RatFactorize( *cfp, *alpha, substCheck ) );
+  return listp;
+}
+
+// factorize a multivariate polynomial over Fp
+extern "C"
+FacList *fp_factorize(CF *ptr, int substCheck)
+{
+  CanonicalForm *cfp  = (CanonicalForm*) ptr;
+  CFFList *listp = new CFFList( FpFactorize( *cfp, substCheck ) );
+  return listp;
+}
+
+// factorize a multivariate polynomial over GF
+extern "C"
+FacList *gf_factorize(CF *ptr, int substCheck)
+{
+  CanonicalForm *cfp  = (CanonicalForm*) ptr;
+  CFFList *listp = new CFFList( GFFactorize( *cfp, substCheck ) );
+  return listp;
+}
+
+// factorize a multivariate polynomial over F_p(alpha)
+extern "C"
+FacList *fq_factorize(CF *cfptr, Var *vptr, int substCheck)
+{
+  CanonicalForm *cfp  = (CanonicalForm*) cfptr;
+  Variable *alpha     = (Variable*) vptr;
+  CFFList *listp = new CFFList( FqFactorize( *cfp, *alpha, substCheck ) );
+  return listp;
+}
+        
+*/
+              
 // -----------------------------------------------------------------------------
 // CanonicalForm
 
