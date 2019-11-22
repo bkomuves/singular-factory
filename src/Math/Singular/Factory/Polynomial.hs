@@ -13,46 +13,11 @@ module Math.Singular.Factory.Polynomial where
 import GHC.TypeLits
 import Data.Proxy
 
-{-}
-import Data.Sequence ( Seq , (<|) , (|>) , ViewL(..) , ViewR(..) )
-import qualified Data.Sequence as Seq 
--}
-
 import System.IO.Unsafe as Unsafe
-
--- import Math.Singular.Factory.GFTables ( tryAndInitGFTables , initGFTables )
 
 import Math.Singular.Factory.Internal.CanonicalForm
 import Math.Singular.Factory.Internal.Factory
 import Math.Singular.Factory.Domains
-
---------------------------------------------------------------------------------
-
-{-
-type V = VarAbc 
-type T = Polynomial V Integer -- (GF 3 2 "x") -- Integer
-
-poly_main = do
-  tryAndInitGFTables
-  
-  print ( enumerateDomain :: [Fp 7] )
-  
-  let [x,y,z] = map var [1,2,3]
-  let p1 = (1+x+y+z)       :: T
-      p2 = (1+x*x+y*y+z*z) :: T
-      pk k = 1+x^k+y^k+z^k :: T
-
-  let p = (pk 3) ^ 4 - 1 
-      
-  putStrLn "" 
-  print p
-
-  putStrLn "" 
-  mapM_ print $ factorize p
-
-  putStrLn "" 
-  print $ p - product [ q^e | (q,e) <- factorize p ]
--}
 
 --------------------------------------------------------------------------------
 -- * Variables

@@ -34,26 +34,6 @@ import System.IO.Unsafe as Unsafe
 
 import Math.Singular.Factory.Internal.CanonicalForm
 import Math.Singular.Factory.Internal.Factory hiding ( FF , GF )
--- import GFTables ( tryAndInitGFTables , initGFTables )
-
---------------------------------------------------------------------------------
-
-{-
-domains_main = do
-  tryAndInitGFTables
-  print $ [ fromIntegral i :: Fp 5  | i<-[0..30] ]
-  print $ [ mkFF i :: FF 5          | i<-[0..30] ]
-  print $ [ mkGF i :: GF 5 2 "x"    | i<-[0..30] ]
-  print $ [ genPowGF i :: GF 5 2 "x"    | i<-[0..30] ]
-  
-  let one = mkGF 1  :: GF 19 3 "y" 
-      a   = genGF   :: GF 19 3 "y"
-      a2  = a*a
-      a3  = a*a*a
-      ra3 = 1/a3
-  
-  print (one,a,a2,a3,ra3,a3*ra3)
--}
 
 --------------------------------------------------------------------------------
 -- * The global characteristics
