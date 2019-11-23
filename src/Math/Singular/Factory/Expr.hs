@@ -1,7 +1,7 @@
 
 -- | Polynomial expressions (used for parsing)
 
-{-# LANGUAGE BangPatterns, DeriveFunctor #-}
+{-# LANGUAGE BangPatterns, DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Math.Singular.Factory.Expr where
 
 --------------------------------------------------------------------------------
@@ -26,22 +26,26 @@ data Sign
   | Minus 
   deriving (Eq,Ord,Show)
 
+negateIfMinus :: Num a => Sign -> a -> a
+negateIfMinus Plus  = id
+negateIfMinus Minus = negate
+
 --------------------------------------------------------------------------------
 
 -- | Monomials
 newtype Monom var 
   = Monom [(var,Int)]
-  deriving (Eq,Ord,Show,Functor)
+  deriving (Eq,Ord,Show,Functor,Foldable,Traversable)
 
 -- | A monomial multiplied by a constant
-data Term var coeff 
-  = Term !(Monom var) !coeff
-  deriving (Eq,Ord,Show,Functor)
+data Term coeff var  
+  = Term !coeff !(Monom var) 
+  deriving (Eq,Ord,Show,Functor,Foldable,Traversable)
   
 -- | Polynomials as linear combination of monomials
-newtype GenPoly var coeff
-  = GenPoly [Term var coeff]
-  deriving (Eq,Ord,Show,Functor)
+newtype GenPoly coeff var 
+  = GenPoly [Term coeff var]
+  deriving (Eq,Ord,Show,Functor,Foldable,Traversable)
 
 -- | Polynomial expressions
 data Expr v
@@ -51,7 +55,7 @@ data Expr v
   | LinE [(Sign,Expr v)]
   | MulE [Expr v]
   | PowE (Expr v) !Int
-  deriving (Eq,Ord,Show,Functor)
+  deriving (Eq,Ord,Show,Functor,Foldable,Traversable)
 
 --------------------------------------------------------------------------------
 -- * Evaluation to @Num@
@@ -64,10 +68,10 @@ evalMonom :: Num c => (var -> c) -> Monom var -> c
 evalMonom f (Monom list) = product (map g list) where
   g (var,expo) = (f var)^expo
 
-evalTerm :: Num c => (coeff -> c) -> (var -> c) -> Term var coeff -> c
-evalTerm f g (Term monom coeff) = f coeff * evalMonom g monom  
+evalTerm :: Num c => (coeff -> c) -> (var -> c) -> Term coeff var -> c
+evalTerm f g (Term coeff monom) = f coeff * evalMonom g monom  
 
-evalGenPoly :: Num c => (coeff -> c) -> (var -> c) -> GenPoly var coeff -> c
+evalGenPoly :: Num c => (coeff -> c) -> (var -> c) -> GenPoly coeff var -> c
 evalGenPoly f g (GenPoly terms) = sum (map (evalTerm f g) terms)
  
 evalExpr :: Num c => (var -> c) -> Expr var -> c

@@ -4,14 +4,17 @@
 {-# LANGUAGE BangPatterns #-}
 module Math.Singular.Factory.Parser 
   ( -- * Parsing polynomials 
-    parseExpr
+    parseExpr , parseGenPoly
+  , parseStringExpr , parseStringGenPoly
     -- * Parser monad
   , Parser, runParser
   , (<||>) , try
+  , many , many1
     -- * Parsers
-  , charP , charP_ , spacesP_ , eofP  
+  , charP , charP_ , charsP
+  , spacesP_ , eofP  
   , signP , natP , integerP , identifierP
-  , exprP 
+  , exprP , genPolyP
   ) 
   where
 
@@ -23,11 +26,16 @@ import Data.List
 import Control.Applicative
 import Control.Monad
 
+import Data.Traversable
+
+import Data.Proxy
+
 import Data.Text.Lazy ( Text )
 import qualified Data.Text.Lazy      as T
 import qualified Data.Text.Lazy.Read as T
 
 import Math.Singular.Factory.Expr
+import Math.Singular.Factory.Variables
 
 import Math.Singular.Factory.Internal.DList as DList
 
@@ -71,6 +79,17 @@ infixr 5 <||>
     Just y  -> return y
     Nothing -> q
 
+instance Alternative Parser where 
+  (<|>) = (<||>)
+ 
+many1 :: Parser a -> Parser [a]
+many1 p = do
+  x  <- p
+  xs <- many p
+  return (x:xs)
+
+--------------------------------------------------------------------------------
+  
 charP_ :: (Char -> Bool) -> Parser ()
 charP_ cond = void $ charP cond
 
@@ -182,6 +201,24 @@ _monomP = do
 monomP :: Parser (Monom Var)
 monomP = Monom <$> _monomP
   
+_termP :: Parser (Integer, Monom Var)
+_termP = do
+  pm   <- withSpaces optionalSignP
+  mbcf <- try (withSpaces integerP)
+  void $ try $ withSpaces (charP_ (=='*'))
+  monom <- case mbcf of
+    Nothing -> monomP
+    Just _  -> maybe (Monom []) id <$> try monomP
+  let cf = maybe 1 id mbcf
+  return (negateIfMinus pm cf , monom)
+   
+termP :: Parser (Term Integer Var)
+termP = (uncurry Term) <$> _termP
+
+genPolyP :: Parser (GenPoly Integer Var)
+genPolyP = (GenPoly . filter isNotZero) <$> (spacesP_ >> many1 termP) where
+  isNotZero (Term cf _) = cf /= 0
+  
 --------------------------------------------------------------------------------
 -- * Parsing polynomial expressions
 
@@ -264,11 +301,26 @@ __sumP = do
 
 --------------------------------------------------------------------------------
 
-parseExpr :: Text -> Either String (Expr Var)
-parseExpr text = case runParser (withEof exprP) text of
+parseStringExpr :: Text -> Either String (Expr Var)
+parseStringExpr text = case runParser (withEof exprP) text of
+  Right (y,_) -> Right y
+  Left  msg   -> Left msg
+
+parseStringGenPoly :: Text -> Either String (GenPoly Integer Var)
+parseStringGenPoly text = case runParser (withEof genPolyP) text of
   Right (y,_) -> Right y
   Left  msg   -> Left msg
 
 --------------------------------------------------------------------------------
 
-    
+parseGenPoly :: forall vars. VariableSet vars => Proxy vars -> Text -> Maybe (GenPoly Integer VarIdx)
+parseGenPoly pxy text = case parseStringGenPoly text of
+  Left {}  -> Nothing
+  Right gp -> sequence $ fmap (recogVarName pxy) gp  
+
+parseExpr :: forall vars. VariableSet vars => Proxy vars -> Text -> Maybe (Expr VarIdx)
+parseExpr pxy text = case parseStringExpr text of
+  Left {} -> Nothing
+  Right e -> sequence $ fmap (recogVarName pxy) e 
+  
+--------------------------------------------------------------------------------

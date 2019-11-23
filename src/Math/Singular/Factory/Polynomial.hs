@@ -13,6 +13,8 @@ module Math.Singular.Factory.Polynomial where
 import GHC.TypeLits
 import Data.Proxy
 
+import Data.Text.Lazy ( Text , pack )
+
 import System.IO.Unsafe as Unsafe
 
 import Math.Singular.Factory.Internal.CanonicalForm
@@ -20,6 +22,9 @@ import Math.Singular.Factory.Internal.Factory
 
 import Math.Singular.Factory.Variables
 import Math.Singular.Factory.Domains
+
+import Math.Singular.Factory.Expr
+import Math.Singular.Factory.Parser
 
 --------------------------------------------------------------------------------
 -- * Polynomials
@@ -132,5 +137,22 @@ evaluate fun (Poly cf0) = unsafeCfToBase (go 1 cf0) where
   go !idx !cf = if isInBaseDomainCF cf
     then cf
     else go (idx+1) (substituteCF (theNthVar idx) (baseToCF $ fun idx) cf)
+
+--------------------------------------------------------------------------------
+-- * Parsing
+
+-- | Parse a polynomial in expanded form
+parsePolynomial :: forall vars. VariableSet vars => Text -> Maybe (Polynomial vars Integer)
+parsePolynomial text = evalGenPoly konst var <$> parseGenPoly (Proxy :: Proxy vars) text
+
+-- | Parse a polynomial expression (for example the product of two polynomials)
+parsePolyExpr :: forall vars. VariableSet vars => Text -> Maybe (Polynomial vars Integer)
+parsePolyExpr text = evalExpr {- konst -} var <$> parseExpr (Proxy :: Proxy vars) text
+
+parsePolynomialStr :: forall vars. VariableSet vars => String -> Maybe (Polynomial vars Integer)
+parsePolynomialStr = parsePolynomial . pack
+
+parsePolyExprStr :: forall vars. VariableSet vars => String -> Maybe (Polynomial vars Integer)
+parsePolyExprStr = parsePolyExpr . pack
 
 --------------------------------------------------------------------------------
