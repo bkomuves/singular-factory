@@ -7,12 +7,13 @@ Description:         Bindings to Singular-factory. Factory is the subset of the 
 License:             GPL
 License-file:        LICENSE
 Author:              Balazs Komuves
+Copyright:           (c) 2019 Balazs Komuves
 Maintainer:          bkomuves (plus) hackage (at) gmail (dot) com
-homepage:            http://moire.be/haskell/
+homepage:            https://github.com/bkomuves/singular-factory
 Stability:           Experimental
 Category:            Math
 Tested-With:         GHC == 8.6.5
-Cabal-Version:       >= 1.24
+Cabal-Version:       2.0
 Build-Type:          Simple
 
 Source-repository head
@@ -22,6 +23,8 @@ Source-repository head
 flag pkg-cfg-prefix
   description:         whether the pkg-config factory package name has a prefix
   manual:              False
+
+--------------------------------------------------------------------------------
   
 Library
   Build-Depends:       base >= 4 && < 5, containers >= 0.5, text >= 1.0,
@@ -40,6 +43,8 @@ Library
                        Math.Singular.Factory.Internal.Factory
                        Math.Singular.Factory.Internal.DList
                            
+  Default-Language:    Haskell2010
+
   Default-extensions:  BangPatterns, TypeSynonymInstances, FlexibleInstances, FlexibleContexts,
                        KindSignatures, DataKinds, EmptyDataDecls, ScopedTypeVariables
                        
