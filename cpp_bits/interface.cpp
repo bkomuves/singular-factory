@@ -72,8 +72,12 @@ void set_default_switches()
 #endif
 #ifdef HAVE_FLINT
   // printf("we have FLINT\n");
-  On(SW_USE_FL_GCD_P);
+  #if defined(SW_USE_FL_GCD_P)
+  On(SW_USE_FL_GCD_P);        // apparently 4.0.3 (on Debian 9) does not yet have these...
+  #endif
+  #if defined(SW_USE_FL_GCD_0)
   On(SW_USE_FL_GCD_0);
+  #endif
 #endif
   On(SW_USE_EZGCD);
   On(SW_USE_EZGCD_P);

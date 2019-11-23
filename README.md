@@ -44,11 +44,16 @@ Linux
 ```
 $ sudo apt install pkg-config
 ```
-2. Install libsingular:
-```   
-$ sudo apt install libsingular4-dev
+2. Install libgmp-dev (required for hgmp):
 ```
-3. Install this library:
+$ sudo apt install libgmp-dev
+```
+3. Install singular:
+```
+$ sudo apt install libmpfr-dev libntl-dev libflint-dev   
+$ sudo apt install singular libsingular4-dev
+```
+4. Install this library:
 ```
 $ cabal update
 $ cabal install --lib singular-factory
